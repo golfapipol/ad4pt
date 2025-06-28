@@ -133,16 +133,29 @@ function BoardContent() {
     [setNodes],
   )
 
-  const deleteSelectedNodes = useCallback(() => {
+  const deleteSelected = useCallback(() => {
+    const selectedEdges = edges.filter((edge) => edge.selected)
+    const selectedNodes = nodes.filter((node) => node.selected)
+
+    setEdges((eds) => eds.filter((edge) => !edge.selected))
     setNodes((nodes) => nodes.filter((node) => !node.selected))
-    setEdges((edges) =>
-      edges.filter((edge) => {
-        const sourceSelected = nodes.find((n) => n.id === edge.source)?.selected
-        const targetSelected = nodes.find((n) => n.id === edge.target)?.selected
-        return !sourceSelected && !targetSelected
-      }),
-    )
-  }, [setNodes, setEdges, nodes])
+  }, [nodes, edges, setNodes, setEdges])
+
+  const onKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (event.key === "Delete" || event.key === "Backspace") {
+        deleteSelected()
+      }
+    },
+    [deleteSelected],
+  )
+
+  useEffect(() => {
+    document.addEventListener("keydown", onKeyDown as unknown as EventListener)
+    return () => {
+      document.removeEventListener("keydown", onKeyDown as unknown as EventListener)
+    }
+  }, [onKeyDown])
 
   return (
     <div className="flex h-full">
@@ -183,7 +196,7 @@ function BoardContent() {
               <Card className="p-4">
                 <h3 className="font-medium mb-3">Actions</h3>
                 <div className="space-y-2">
-                  <Button variant="destructive" size="sm" onClick={deleteSelectedNodes} className="w-full">
+                  <Button variant="destructive" size="sm" onClick={deleteSelected} className="w-full">
                     <Trash2 className="w-4 h-4 mr-2" />
                     Delete Selected
                   </Button>
@@ -216,6 +229,7 @@ function BoardContent() {
           minZoom={0.1}
           maxZoom={2}
           attributionPosition="bottom-left"
+          onKeyDown={onKeyDown}
         >
           <Controls />
           <MiniMap
