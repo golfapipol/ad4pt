@@ -85,7 +85,32 @@ function BoardContent() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
-  const onConnect = useCallback((params: Edge | Connection) => setEdges((eds) => addEdge(params, eds)), [setEdges])
+  const onConnect = useCallback(
+    (connection: Edge | Connection) => {
+      const sourceNode = nodes.find((node) => node.id === connection.source)
+      const targetNode = nodes.find((node) => node.id === connection.target)
+
+      // Basic validation
+      if (!sourceNode || !targetNode || !connection.sourceHandle || !connection.targetHandle) {
+        return
+      }
+
+      // Horizontal connection: only between same-type nodes
+      if (connection.sourceHandle === "same-type" && connection.targetHandle === "same-type") {
+        if (sourceNode.type === targetNode.type) {
+          setEdges((eds) => addEdge(connection, eds))
+        }
+        return // Explicitly do nothing if types don't match
+      }
+
+      // Vertical connection: can connect to any other node
+      if (connection.sourceHandle === "another-type" && connection.targetHandle === "another-type") {
+        setEdges((eds) => addEdge(connection, eds))
+        return
+      }
+    },
+    [nodes, setEdges],
+  )
 
   const createNode = useCallback(
     (type: string) => {
