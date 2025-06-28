@@ -19,7 +19,6 @@ import { Card } from "@/components/ui/card"
 import { Trash2, Menu, X, Workflow, User, Globe, Settings, Cog, Database, Shield } from "lucide-react"
 import { ApiNode } from "./nodes/ApiNode"
 import { BusinessFlowNode } from "./nodes/BusinessFlowNode"
-import { ControllerNode } from "./nodes/ControllerNode"
 import { CustomerActionNode } from "./nodes/CustomerActionNode"
 import { GatewayNode } from "./nodes/GatewayNode"
 import { RepositoryNode } from "./nodes/RepositoryNode"
@@ -45,7 +44,6 @@ const NODE_TOOLS = [
   { type: "businessFlow", icon: Workflow, label: "Business Flow", color: "bg-blue-100 text-blue-700" },
   { type: "customerAction", icon: User, label: "Customer Action", color: "bg-green-100 text-green-700" },
   { type: "api", icon: Globe, label: "API", color: "bg-purple-100 text-purple-700" },
-  { type: "controller", icon: Settings, label: "Controller", color: "bg-orange-100 text-orange-700" },
   { type: "service", icon: Cog, label: "Service", color: "bg-red-100 text-red-700" },
   { type: "repository", icon: Database, label: "Repository", color: "bg-yellow-100 text-yellow-700" },
   { type: "gateway", icon: Shield, label: "Gateway", color: "bg-indigo-100 text-indigo-700" },
@@ -56,7 +54,6 @@ const nodeTypes = {
   businessFlow: BusinessFlowNode,
   customerAction: CustomerActionNode,
   api: ApiNode,
-  controller: ControllerNode,
   service: ServiceNode,
   repository: RepositoryNode,
   gateway: GatewayNode,
@@ -90,23 +87,22 @@ function BoardContent() {
       const sourceNode = nodes.find((node) => node.id === connection.source)
       const targetNode = nodes.find((node) => node.id === connection.target)
 
-      // Basic validation
-      if (!sourceNode || !targetNode || !connection.sourceHandle || !connection.targetHandle) {
-        return
+      if (!sourceNode || !targetNode) return
+
+      const sourceType = sourceNode.type
+      const targetType = targetNode.type
+
+      const connectionRules: Record<string, string[]> = {
+        businessFlow: ["customerAction"],
+        customerAction: ["api"],
+        api: ["service", "repository"],
+        service: ["repository", "gateway"],
       }
 
-      // Horizontal connection: only between same-type nodes
-      if (connection.sourceHandle === "same-type" && connection.targetHandle === "same-type") {
-        if (sourceNode.type === targetNode.type) {
-          setEdges((eds) => addEdge(connection, eds))
-        }
-        return // Explicitly do nothing if types don't match
-      }
-
-      // Vertical connection: can connect to any other node
-      if (connection.sourceHandle === "another-type" && connection.targetHandle === "another-type") {
+      if (connectionRules[sourceType] && connectionRules[sourceType].includes(targetType)) {
         setEdges((eds) => addEdge(connection, eds))
-        return
+      } else if (sourceType === targetType) {
+        setEdges((eds) => addEdge(connection, eds))
       }
     },
     [nodes, setEdges],
