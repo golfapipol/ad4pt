@@ -156,6 +156,39 @@ function BoardContent() {
     [deleteSelected],
   )
 
+  const handleExport = () => {
+    const data = {
+      nodes,
+      edges,
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "board-state.json"
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const contents = e.target?.result as string
+        try {
+          const { nodes, edges } = JSON.parse(contents)
+          setNodes(nodes)
+          setEdges(edges)
+        } catch (error) {
+          console.error("Error parsing imported file:", error)
+          // Handle error appropriately, e.g., show a notification
+        }
+      }
+      reader.readAsText(file)
+    }
+  }
+
   useEffect(() => {
     document.addEventListener("keydown", onKeyDown as unknown as EventListener)
     return () => {
@@ -179,6 +212,22 @@ function BoardContent() {
 
           {!sidebarCollapsed && (
             <>
+              {/* Import/Export */}
+              <Card className="p-4 mb-4">
+                <h3 className="font-medium mb-3">Manage Board</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" size="sm" onClick={handleExport}>
+                    Export
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <label htmlFor="import-file" className="cursor-pointer">
+                      Import
+                      <input type="file" id="import-file" accept=".json" onChange={handleImport} className="hidden" />
+                    </label>
+                  </Button>
+                </div>
+              </Card>
+
               {/* Node Tools */}
               <Card className="p-4 mb-4">
                 <h3 className="font-medium mb-3">Add Nodes</h3>
