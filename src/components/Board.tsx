@@ -143,6 +143,12 @@ function BoardContent() {
 
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
+      // Prevent deletion when an input field is focused
+      const activeElement = document.activeElement
+      if (activeElement && (activeElement.tagName === "INPUT" || activeElement.tagName === "TEXTAREA")) {
+        return
+      }
+
       if (event.key === "Delete" || event.key === "Backspace") {
         deleteSelected()
       }
