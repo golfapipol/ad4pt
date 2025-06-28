@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
 import ReactFlow, {
   type Node,
   type Edge,
@@ -11,15 +11,19 @@ import ReactFlow, {
   MiniMap,
   useNodesState,
   useEdgesState,
-  type NodeProps,
-  Handle,
-  Position,
   ReactFlowProvider,
 } from "reactflow"
 import "reactflow/dist/style.css"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Trash2, Menu, X, Workflow, User, Globe, Settings, Cog, Database, Shield } from "lucide-react"
+import { ApiNode } from "./nodes/ApiNode"
+import { BusinessFlowNode } from "./nodes/BusinessFlowNode"
+import { ControllerNode } from "./nodes/ControllerNode"
+import { CustomerActionNode } from "./nodes/CustomerActionNode"
+import { GatewayNode } from "./nodes/GatewayNode"
+import { RepositoryNode } from "./nodes/RepositoryNode"
+import { ServiceNode } from "./nodes/ServiceNode"
 
 // Suppress ResizeObserver error
 const suppressResizeObserverError = () => {
@@ -47,56 +51,15 @@ const NODE_TOOLS = [
   { type: "gateway", icon: Shield, label: "Gateway", color: "bg-indigo-100 text-indigo-700" },
 ]
 
-// Custom Node Component
-function CustomNode({ data, selected }: NodeProps) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [label, setLabel] = useState(data.label || "Node")
-
-  const nodeConfig = NODE_TOOLS.find((tool) => tool.type === data.nodeType) || NODE_TOOLS[0]
-  const IconComponent = nodeConfig.icon
-
-  return (
-    <div
-      className={`px-4 py-3 bg-white border-2 rounded-lg shadow-md min-w-[140px] ${
-        selected ? "border-blue-500" : "border-gray-300"
-      } ${nodeConfig.color}`}
-    >
-      <Handle type="target" position={Position.Top} id="another-type" />
-      <Handle type="target" position={Position.Left} id="same-type" />
-      <div className="flex items-center gap-2 mb-2">
-        <IconComponent className="w-4 h-4" />
-        <span className="text-xs font-medium opacity-75">{nodeConfig.label}</span>
-      </div>
-      {isEditing ? (
-        <input
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          onBlur={() => {
-            setIsEditing(false)
-            data.onUpdate?.(data.id, { label })
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              setIsEditing(false)
-              data.onUpdate?.(data.id, { label })
-            }
-          }}
-          className="w-full bg-transparent border-none outline-none font-medium"
-          autoFocus
-        />
-      ) : (
-        <div className="font-medium cursor-text" onDoubleClick={() => setIsEditing(true)}>
-          {label}
-        </div>
-      )}
-      <Handle type="source" position={Position.Right} id="same-type" />
-      <Handle type="source" position={Position.Bottom} id="another-type" />
-    </div>
-  )
-}
 
 const nodeTypes = {
-  customNode: CustomNode,
+  businessFlow: BusinessFlowNode,
+  customerAction: CustomerActionNode,
+  api: ApiNode,
+  controller: ControllerNode,
+  service: ServiceNode,
+  repository: RepositoryNode,
+  gateway: GatewayNode,
 }
 
 export default function InteractiveBoard() {
@@ -128,7 +91,7 @@ function BoardContent() {
     (type: string) => {
       const newNode: Node = {
         id: `${type}-${Date.now()}`,
-        type: "customNode",
+        type,
         position: { x: Math.random() * 400 + 100, y: Math.random() * 400 + 100 },
         data: {
           nodeType: type,
