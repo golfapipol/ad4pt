@@ -50,7 +50,6 @@ export function ApiNode({ id, data, selected }: NodeProps) {
       } bg-purple-100 text-purple-700`}
     >
       <Handle type="target" position={Position.Top} id="another-type" />
-      <Handle type="target" position={Position.Left} id="same-type" />
       <div className="flex items-center gap-2 mb-2">
         <Globe className="w-4 h-4" />
         <span className="text-xs font-medium opacity-75">API</span>
@@ -203,7 +202,6 @@ export function ApiNode({ id, data, selected }: NodeProps) {
         </div>
       </div>
 
-      <Handle type="source" position={Position.Right} id="same-type" />
       <Handle type="source" position={Position.Bottom} id="another-type" />
     </div>
   )

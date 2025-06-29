@@ -14,10 +14,9 @@ export function ControllerNode({ id, data, selected }: NodeProps) {
     <div
       className={`px-4 py-3 bg-white border-2 rounded-lg shadow-md min-w-[300px] ${
         selected ? "border-blue-500" : "border-gray-300"
-      } bg-red-100 text-red-700`}
+      } bg-orange-100 text-red-700`}
     >
       <Handle type="target" position={Position.Top} id="another-type" />
-      <Handle type="target" position={Position.Left} id="same-type" />
       <div className="flex items-center gap-2 mb-2">
         <Cog className="w-4 h-4" />
         <span className="text-xs font-medium opacity-75">Controller</span>
@@ -52,7 +51,7 @@ export function ControllerNode({ id, data, selected }: NodeProps) {
               type="text"
               value={payload.serviceName || ""}
               onChange={(e) => handleUpdate("serviceName", e.target.value)}
-              className="w-full bg-red-50 border border-red-200 rounded px-1 py-0.5 text-xs"
+              className="w-full bg-orange-50 border border-red-200 rounded px-1 py-0.5 text-xs"
               placeholder="NewController"
             />
           </div>
@@ -61,7 +60,7 @@ export function ControllerNode({ id, data, selected }: NodeProps) {
             <textarea
               value={payload.description || ""}
               onChange={(e) => handleUpdate("description", e.target.value)}
-              className="w-full bg-red-50 border border-red-200 rounded px-1 py-0.5 text-xs h-16"
+              className="w-full bg-orange-50 border border-red-200 rounded px-1 py-0.5 text-xs h-16"
               placeholder="This controller handles incoming requests."
             />
           </div>
@@ -70,14 +69,13 @@ export function ControllerNode({ id, data, selected }: NodeProps) {
             <textarea
               value={payload.dependencies || ""}
               onChange={(e) => handleUpdate("dependencies", e.target.value)}
-              className="w-full bg-red-50 border border-red-200 rounded px-1 py-0.5 text-xs h-12"
+              className="w-full bg-orange-50 border border-red-200 rounded px-1 py-0.5 text-xs h-12"
               placeholder="e.g., ApiService, Logger"
             />
           </div>
         </div>
       </div>
 
-      <Handle type="source" position={Position.Right} id="same-type" />
       <Handle type="source" position={Position.Bottom} id="another-type" />
     </div>
   )
