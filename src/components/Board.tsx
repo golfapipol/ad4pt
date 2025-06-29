@@ -145,7 +145,8 @@ function BoardContent() {
           break
         case "repository":
           specificPayload = {
-            database: "PostgreSQL",
+            databaseType: "PostgreSQL",
+            schema: "schema",
             tableName: "users",
             query: "SELECT * FROM users;",
           }
@@ -163,7 +164,6 @@ function BoardContent() {
           break
         case "gateway":
           specificPayload = {
-            type: "API",
             url: "/api/v1/",
             method: "GET",
             requestHeaders: [{ key: "Content-Type", value: "application/json" }],
