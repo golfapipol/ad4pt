@@ -119,6 +119,64 @@ function BoardContent() {
 
   const createNode = useCallback(
     (type: string) => {
+      const basePayload = {
+        label: NODE_TOOLS.find((tool) => tool.type === type)?.label || type,
+      }
+
+      let specificPayload = {}
+      switch (type) {
+        case "api":
+          specificPayload = {
+            url: "/api/v1/",
+            method: "GET",
+            requestHeaders: [{ key: "Content-Type", value: "application/json" }],
+            requestBody: JSON.stringify({ data: "example" }, null, 2),
+            responseStatus: "200",
+            responseHeaders: [{ key: "Content-Type", value: "application/json" }],
+            responseBody: JSON.stringify({ message: "Success" }, null, 2),
+          }
+          break
+        case "service":
+          specificPayload = {
+            serviceName: "NewService",
+            description: "This service handles business logic.",
+            dependencies: [],
+          }
+          break
+        case "repository":
+          specificPayload = {
+            database: "PostgreSQL",
+            tableName: "users",
+            query: "SELECT * FROM users;",
+          }
+          break
+        case "businessFlow":
+          specificPayload = {
+            description: "This flow outlines a core business process.",
+          }
+          break
+        case "customerAction":
+          specificPayload = {
+            action: "User clicks a button",
+            description: "A customer performs an action.",
+          }
+          break
+        case "gateway":
+          specificPayload = {
+            type: "API",
+            url: "/api/v1/",
+            method: "GET",
+            requestHeaders: [{ key: "Content-Type", value: "application/json" }],
+            requestBody: JSON.stringify({ data: "example" }, null, 2),
+            responseStatus: "200",
+            responseHeaders: [{ key: "Content-Type", value: "application/json" }],
+            responseBody: JSON.stringify({ message: "Success" }, null, 2),
+          
+          }
+          break
+        // Add other cases as needed
+      }
+
       const newNode: Node = {
         id: `${type}-${Date.now()}`,
         type,
@@ -127,8 +185,7 @@ function BoardContent() {
           nodeType: type,
           label: NODE_TOOLS.find((tool) => tool.type === type)?.label || type,
           onUpdate: handleNodeUpdate,
-          payload: {
-          },
+          payload: { ...basePayload, ...specificPayload },
         },
       }
       setNodes((nodes) => [...nodes, newNode])
