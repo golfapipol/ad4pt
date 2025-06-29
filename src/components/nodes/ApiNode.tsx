@@ -2,20 +2,6 @@ import { useState } from "react"
 import { type NodeProps, Handle, Position } from "reactflow"
 import { Globe, Plus, Trash2 } from "lucide-react"
 
-// Helper function to convert headers array to JSON string
-const headersToJson = (headers: { key: string; value: string }[]) => {
-  return JSON.stringify(
-    headers.reduce((obj, item) => {
-      if (item.key) {
-        obj[item.key] = item.value
-      }
-      return obj
-    }, {} as Record<string, string>),
-    null,
-    2
-  )
-}
-
 export function ApiNode({ id, data, selected }: NodeProps) {
   const [isEditing, setIsEditing] = useState(false)
   const { label, payload = {} } = data
