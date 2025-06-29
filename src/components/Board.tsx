@@ -16,7 +16,7 @@ import ReactFlow, {
 import "reactflow/dist/style.css"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Trash2, Menu, X, Workflow, User, Globe, Settings, Cog, Database, Shield } from "lucide-react"
+import { Trash2, Menu, X, Workflow, User, Globe, Cog, Database, Shield } from "lucide-react"
 import { ApiNode } from "./nodes/ApiNode"
 import { BusinessFlowNode } from "./nodes/BusinessFlowNode"
 import { CustomerActionNode } from "./nodes/CustomerActionNode"
@@ -82,6 +82,15 @@ function BoardContent() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
+  const handleNodeUpdate = useCallback(
+    (id: string, updates: any) => {
+      setNodes((nds) =>
+        nds.map((node) => (node.id === id ? { ...node, data: { ...node.data, ...updates } } : node)),
+      )
+    },
+    [setNodes],
+  )
+
   const onConnect = useCallback(
     (connection: Edge | Connection) => {
       const sourceNode = nodes.find((node) => node.id === connection.source)
@@ -117,22 +126,17 @@ function BoardContent() {
         data: {
           nodeType: type,
           label: NODE_TOOLS.find((tool) => tool.type === type)?.label || type,
-          onUpdate: (id: string, updates: any) => {
-            setNodes((nodes) =>
-              nodes.map((node) => (node.id === id ? { ...node, data: { ...node.data, ...updates } } : node)),
-            )
+          onUpdate: handleNodeUpdate,
+          payload: {
           },
         },
       }
       setNodes((nodes) => [...nodes, newNode])
     },
-    [setNodes],
+    [setNodes, handleNodeUpdate],
   )
 
   const deleteSelected = useCallback(() => {
-    const selectedEdges = edges.filter((edge) => edge.selected)
-    const selectedNodes = nodes.filter((node) => node.selected)
-
     setEdges((eds) => eds.filter((edge) => !edge.selected))
     setNodes((nodes) => nodes.filter((node) => !node.selected))
   }, [nodes, edges, setNodes, setEdges])
@@ -173,8 +177,12 @@ function BoardContent() {
       reader.onload = (e) => {
         const contents = e.target?.result as string
         try {
-          const { nodes, edges } = JSON.parse(contents)
-          setNodes(nodes)
+          const { nodes: importedNodes, edges } = JSON.parse(contents)
+          const nodesWithUpdater = importedNodes.map((n: Node) => ({
+            ...n,
+            data: { ...n.data, onUpdate: handleNodeUpdate },
+          }))
+          setNodes(nodesWithUpdater)
           setEdges(edges)
         } catch (error) {
           console.error("Error parsing imported file:", error)

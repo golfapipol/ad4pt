@@ -16,21 +16,18 @@ const headersToJson = (headers: { key: string; value: string }[]) => {
   )
 }
 
-export function ApiNode({ data, selected }: NodeProps) {
+export function ApiNode({ id, data, selected }: NodeProps) {
   const [isEditing, setIsEditing] = useState(false)
-  const [label, setLabel] = useState(data.label || "API")
-
-  // New fields state
-  const [url, setUrl] = useState(data.url || "")
-  const [method, setMethod] = useState(data.method || "GET")
-  const [requestHeaders, setRequestHeaders] = useState(data.requestHeaders || [{ key: "", value: "" }])
-  const [requestBody, setRequestBody] = useState(data.requestBody || "")
-  const [status, setStatus] = useState(data.status || "200")
-  const [responseHeaders, setResponseHeaders] = useState(data.responseHeaders || [{ key: "", value: "" }])
-  const [responseBody, setResponseBody] = useState(data.body || "")
+  const { label, payload = {} } = data
 
   const handleUpdate = (field: string, value: any) => {
-    data.onUpdate?.(data.id, { [field]: value })
+    if (field.startsWith("payload.")) {
+      const payloadField = field.substring("payload.".length)
+      const newPayload = { ...payload, [payloadField]: value }
+      data.onUpdate?.(id, { payload: newPayload })
+    } else {
+      data.onUpdate?.(id, { [field]: value })
+    }
   }
 
   const handleHeaderChange = (
@@ -39,39 +36,25 @@ export function ApiNode({ data, selected }: NodeProps) {
     value: string,
     type: "request" | "response"
   ) => {
-    const headers = type === "request" ? [...requestHeaders] : [...responseHeaders]
-    headers[index][field] = value
-    if (type === "request") {
-      setRequestHeaders(headers)
-      handleUpdate("requestHeaders", headers)
-    } else {
-      setResponseHeaders(headers)
-      handleUpdate("responseHeaders", headers)
-    }
+    const headersField = type === "request" ? "requestHeaders" : "responseHeaders"
+    const oldHeaders = payload[headersField] || []
+    const newHeaders = [...oldHeaders]
+    newHeaders[index] = { ...newHeaders[index], [field]: value }
+    handleUpdate(`payload.${headersField}`, newHeaders)
   }
 
   const addHeader = (type: "request" | "response") => {
-    if (type === "request") {
-      const newHeaders = [...requestHeaders, { key: "", value: "" }]
-      setRequestHeaders(newHeaders)
-      handleUpdate("requestHeaders", newHeaders)
-    } else {
-      const newHeaders = [...responseHeaders, { key: "", value: "" }]
-      setResponseHeaders(newHeaders)
-      handleUpdate("responseHeaders", newHeaders)
-    }
+    const headersField = type === "request" ? "requestHeaders" : "responseHeaders"
+    const oldHeaders = payload[headersField] || []
+    const newHeaders = [...oldHeaders, { key: "", value: "" }]
+    handleUpdate(`payload.${headersField}`, newHeaders)
   }
 
   const removeHeader = (index: number, type: "request" | "response") => {
-    if (type === "request") {
-      const newHeaders = requestHeaders.filter((_, i) => i !== index)
-      setRequestHeaders(newHeaders)
-      handleUpdate("requestHeaders", newHeaders)
-    } else {
-      const newHeaders = responseHeaders.filter((_, i) => i !== index)
-      setResponseHeaders(newHeaders)
-      handleUpdate("responseHeaders", newHeaders)
-    }
+    const headersField = type === "request" ? "requestHeaders" : "responseHeaders"
+    const oldHeaders = payload[headersField] || []
+    const newHeaders = oldHeaders.filter((_: any, i: number) => i !== index)
+    handleUpdate(`payload.${headersField}`, newHeaders)
   }
 
   return (
@@ -88,16 +71,14 @@ export function ApiNode({ data, selected }: NodeProps) {
       </div>
       {isEditing ? (
         <input
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
+          value={label || "API"}
+          onChange={(e) => handleUpdate("label", e.target.value)}
           onBlur={() => {
             setIsEditing(false)
-            handleUpdate("label", label)
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               setIsEditing(false)
-              handleUpdate("label", label)
             }
           }}
           className="w-full bg-transparent border-none outline-none font-medium"
@@ -105,7 +86,7 @@ export function ApiNode({ data, selected }: NodeProps) {
         />
       ) : (
         <div className="font-medium cursor-text" onDoubleClick={() => setIsEditing(true)}>
-          {label}
+          {payload.label || "API"}
         </div>
       )}
 
@@ -119,9 +100,8 @@ export function ApiNode({ data, selected }: NodeProps) {
               <label className="w-14 font-medium opacity-75">URL:</label>
               <input
                 type="text"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                onBlur={() => handleUpdate("url", url)}
+                value={payload.url || ""}
+                onChange={(e) => handleUpdate("payload.url", e.target.value)}
                 className="w-full bg-purple-50 border border-purple-200 rounded px-1 py-0.5 text-xs"
                 placeholder="/api/v1/users"
               />
@@ -129,9 +109,8 @@ export function ApiNode({ data, selected }: NodeProps) {
             <div className="flex items-center gap-1">
               <label className="w-14 font-medium opacity-75">Method:</label>
               <select
-                value={method}
-                onChange={(e) => setMethod(e.target.value)}
-                onBlur={() => handleUpdate("method", method)}
+                value={payload.method || "GET"}
+                onChange={(e) => handleUpdate("payload.method", e.target.value)}
                 className="w-full bg-purple-50 border border-purple-200 rounded px-1 py-0.5 text-xs"
               >
                 <option>GET</option>
@@ -144,7 +123,7 @@ export function ApiNode({ data, selected }: NodeProps) {
             <div>
               <label className="block font-medium opacity-75 mb-0.5">Headers:</label>
               <div className="space-y-1">
-                {requestHeaders.map((header, index) => (
+                {(payload.requestHeaders || []).map((header: { key: string; value: string }, index: number) => (
                   <div key={index} className="flex items-center gap-1">
                     <input
                       type="text"
@@ -173,9 +152,8 @@ export function ApiNode({ data, selected }: NodeProps) {
             <div>
               <label className="block font-medium opacity-75 mb-0.5">Body:</label>
               <textarea
-                value={requestBody}
-                onChange={(e) => setRequestBody(e.target.value)}
-                onBlur={() => handleUpdate("requestBody", requestBody)}
+                value={payload.requestBody || ""}
+                onChange={(e) => handleUpdate("payload.requestBody", e.target.value)}
                 className="w-full bg-purple-50 border border-purple-200 rounded px-1 py-0.5 text-xs h-16"
                 placeholder='{ "data": "example" }'
               />
@@ -191,9 +169,8 @@ export function ApiNode({ data, selected }: NodeProps) {
               <label className="w-14 font-medium opacity-75">Status:</label>
               <input
                 type="text"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                onBlur={() => handleUpdate("status", status)}
+                value={payload.status || "200"}
+                onChange={(e) => handleUpdate("payload.status", e.target.value)}
                 className="w-full bg-purple-50 border border-purple-200 rounded px-1 py-0.5 text-xs"
                 placeholder="200"
               />
@@ -201,7 +178,7 @@ export function ApiNode({ data, selected }: NodeProps) {
             <div>
               <label className="block font-medium opacity-75 mb-0.5">Headers:</label>
               <div className="space-y-1">
-                {responseHeaders.map((header, index) => (
+                {(payload.responseHeaders || []).map((header: { key: string; value: string }, index: number) => (
                   <div key={index} className="flex items-center gap-1">
                     <input
                       type="text"
@@ -230,9 +207,8 @@ export function ApiNode({ data, selected }: NodeProps) {
             <div>
               <label className="block font-medium opacity-75 mb-0.5">Body:</label>
               <textarea
-                value={responseBody}
-                onChange={(e) => setResponseBody(e.target.value)}
-                onBlur={() => handleUpdate("body", responseBody)}
+                value={payload.responseBody || ""}
+                onChange={(e) => handleUpdate("payload.responseBody", e.target.value)}
                 className="w-full bg-purple-50 border border-purple-200 rounded px-1 py-0.5 text-xs h-16"
                 placeholder='{ "message": "Success" }'
               />
