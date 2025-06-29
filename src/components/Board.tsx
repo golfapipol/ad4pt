@@ -145,9 +145,9 @@ function BoardContent() {
           break
         case "repository":
           specificPayload = {
-            databaseType: "PostgreSQL",
+            database: "PostgreSQL",
             schema: "schema",
-            tableName: "users",
+            action: "select",
             query: "SELECT * FROM users;",
           }
           break

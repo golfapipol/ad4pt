@@ -74,14 +74,16 @@ export function RepositoryNode({ id, data, selected }: NodeProps) {
             />
           </div>
           <div className="flex items-center gap-1">
-            <label className="w-20 font-medium opacity-75">Table Name:</label>
-            <input
-              type="text"
-              value={payload.tableName || ""}
-              onChange={(e) => handleUpdate("payload.tableName", e.target.value)}
+            <label className="w-20 font-medium opacity-75">Action:</label>
+            <select
+              value={payload.action || "select"}
+              onChange={(e) => handleUpdate("payload.action", e.target.value)}
               className="w-full bg-yellow-50 border border-yellow-200 rounded px-1 py-0.5 text-xs"
-              placeholder="users"
-            />
+            >
+              <option>select</option>
+              <option>insert/update</option>
+              <option>delete</option>
+            </select>
           </div>
           <div>
             <label className="block font-medium opacity-75 mb-0.5">Query:</label>
