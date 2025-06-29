@@ -55,8 +55,8 @@ const NODE_TOOLS = [
 const nodeTypes = {
   businessFlow: BusinessFlowNode,
   customerAction: CustomerActionNode,
-  api: ApiNode,
   controller: ControllerNode,
+  api: ApiNode,
   service: ServiceNode,
   repository: RepositoryNode,
   gateway: GatewayNode,
@@ -86,7 +86,7 @@ function BoardContent() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   const handleNodeUpdate = useCallback(
-    (id: string, updates: any) => {
+    (id: string, updates: object) => {
       setNodes((nds) =>
         nds.map((node) => (node.id === id ? { ...node, data: { ...node.data, ...updates } } : node)),
       )
@@ -101,8 +101,8 @@ function BoardContent() {
 
       if (!sourceNode || !targetNode) return
 
-      const sourceType = sourceNode.type
-      const targetType = targetNode.type
+      const sourceType = sourceNode.type as string;
+      const targetType = targetNode.type as string;
 
       const connectionRules: Record<string, string[]> = {
         businessFlow: ["customerAction"],
