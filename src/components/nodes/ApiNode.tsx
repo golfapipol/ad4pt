@@ -71,7 +71,7 @@ export function ApiNode({ id, data, selected }: NodeProps) {
         />
       ) : (
         <div className="font-medium cursor-text" onDoubleClick={() => setIsEditing(true)}>
-          {payload.label || "API"}
+          {label || "API"}
         </div>
       )}
 

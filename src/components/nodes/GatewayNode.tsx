@@ -7,7 +7,13 @@ export function GatewayNode({ id, data, selected }: NodeProps) {
   const { label, payload = {} } = data
 
   const handleUpdate = (field: string, value: any) => {
-    data.onUpdate?.(id, { [field]: value })
+    if (field.startsWith("payload.")) {
+      const payloadField = field.substring("payload.".length)
+      const newPayload = { ...payload, [payloadField]: value }
+      data.onUpdate?.(id, { payload: newPayload })
+    } else {
+      data.onUpdate?.(id, { [field]: value })
+    }
   }
 
   const handleHeaderChange = (
@@ -66,7 +72,7 @@ export function GatewayNode({ id, data, selected }: NodeProps) {
         />
       ) : (
         <div className="font-medium cursor-text" onDoubleClick={() => setIsEditing(true)}>
-          {payload.label || "Gateway"}
+          {label || "Gateway"}
         </div>
       )}
 

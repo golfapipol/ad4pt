@@ -4,10 +4,16 @@ import { Cog } from "lucide-react"
 
 export function ControllerNode({ id, data, selected }: NodeProps) {
   const [isEditing, setIsEditing] = useState(false)
-  const { payload = {} } = data
+  const { label, payload = {} } = data
 
   const handleUpdate = (field: string, value: any) => {
-    data.onUpdate?.(id, { [field]: value })
+    if (field.startsWith("payload.")) {
+      const payloadField = field.substring("payload.".length)
+      const newPayload = { ...payload, [payloadField]: value }
+      data.onUpdate?.(id, { payload: newPayload })
+    } else {
+      data.onUpdate?.(id, { [field]: value })
+    }
   }
 
   return (
@@ -23,7 +29,7 @@ export function ControllerNode({ id, data, selected }: NodeProps) {
       </div>
       {isEditing ? (
         <input
-          value={payload.label || "Controller"}
+          value={label || "Controller"}
           onChange={(e) => handleUpdate("label", e.target.value)}
           onBlur={() => {
             setIsEditing(false)
@@ -38,7 +44,7 @@ export function ControllerNode({ id, data, selected }: NodeProps) {
         />
       ) : (
         <div className="font-medium cursor-text" onDoubleClick={() => setIsEditing(true)}>
-          {payload.label || "Controller"}
+          {label || "Controller"}
         </div>
       )}
 
