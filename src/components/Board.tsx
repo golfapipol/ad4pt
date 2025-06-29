@@ -112,7 +112,7 @@ function BoardContent() {
         service: ["repository", "gateway"],
       }
 
-      if (connectionRules[sourceType] && connectionRules[sourceType].includes(targetType)) {
+      if (connection.sourceHandle === connection.targetHandle && connectionRules[sourceType] && connectionRules[sourceType].includes(targetType)) {
         setEdges((eds) => addEdge(connection, eds))
       } else if (sourceType === targetType) {
         setEdges((eds) => addEdge(connection, eds))
