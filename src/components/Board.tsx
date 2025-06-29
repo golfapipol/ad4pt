@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Trash2, Menu, X, Workflow, User, Globe, Cog, Database, Settings, Shield } from "lucide-react"
 import { ApiNode } from "./nodes/ApiNode"
-import { ControllerNode } from "./nodes/ControllerNode"
+import { ControllerNode } from './nodes/ControllerNode'
 import { BusinessFlowNode } from "./nodes/BusinessFlowNode"
 import { CustomerActionNode } from "./nodes/CustomerActionNode"
 import { GatewayNode } from "./nodes/GatewayNode"
@@ -44,8 +44,8 @@ const suppressResizeObserverError = () => {
 const NODE_TOOLS = [
   { type: "businessFlow", icon: Workflow, label: "Business Flow", color: "bg-blue-100 text-blue-700" },
   { type: "customerAction", icon: User, label: "Customer Action", color: "bg-green-100 text-green-700" },
-  { type: "controller", icon: Settings, label: "Controller", color: "bg-orange-100 text-orange-700" },
   { type: "api", icon: Globe, label: "API", color: "bg-purple-100 text-purple-700" },
+  { type: "controller", icon: Settings, label: "Controller", color: "bg-orange-100 text-orange-700" },
   { type: "service", icon: Cog, label: "Service", color: "bg-red-100 text-red-700" },
   { type: "repository", icon: Database, label: "Repository", color: "bg-yellow-100 text-yellow-700" },
   { type: "gateway", icon: Shield, label: "Gateway", color: "bg-indigo-100 text-indigo-700" },
@@ -107,7 +107,8 @@ function BoardContent() {
       const connectionRules: Record<string, string[]> = {
         businessFlow: ["customerAction"],
         customerAction: ["api"],
-        api: ["service", "repository"],
+        api: ["controller"],
+        controller: ["service", "repository", "gateway"],
         service: ["repository", "gateway"],
       }
 
@@ -161,8 +162,8 @@ function BoardContent() {
           break
         case "customerAction":
           specificPayload = {
-            action: "User clicks a button",
-            description: "A customer performs an action.",
+            actionType: "navigate",
+            url: "https://example.com",
           }
           break
         case "gateway":
