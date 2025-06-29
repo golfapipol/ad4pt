@@ -16,8 +16,9 @@ import ReactFlow, {
 import "reactflow/dist/style.css"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Trash2, Menu, X, Workflow, User, Globe, Cog, Database, Shield } from "lucide-react"
+import { Trash2, Menu, X, Workflow, User, Globe, Cog, Database, Settings, Shield } from "lucide-react"
 import { ApiNode } from "./nodes/ApiNode"
+import { ControllerNode } from "./nodes/ControllerNode"
 import { BusinessFlowNode } from "./nodes/BusinessFlowNode"
 import { CustomerActionNode } from "./nodes/CustomerActionNode"
 import { GatewayNode } from "./nodes/GatewayNode"
@@ -43,6 +44,7 @@ const suppressResizeObserverError = () => {
 const NODE_TOOLS = [
   { type: "businessFlow", icon: Workflow, label: "Business Flow", color: "bg-blue-100 text-blue-700" },
   { type: "customerAction", icon: User, label: "Customer Action", color: "bg-green-100 text-green-700" },
+  { type: "controller", icon: Settings, label: "Controller", color: "bg-orange-100 text-orange-700" },
   { type: "api", icon: Globe, label: "API", color: "bg-purple-100 text-purple-700" },
   { type: "service", icon: Cog, label: "Service", color: "bg-red-100 text-red-700" },
   { type: "repository", icon: Database, label: "Repository", color: "bg-yellow-100 text-yellow-700" },
@@ -54,6 +56,7 @@ const nodeTypes = {
   businessFlow: BusinessFlowNode,
   customerAction: CustomerActionNode,
   api: ApiNode,
+  controller: ControllerNode,
   service: ServiceNode,
   repository: RepositoryNode,
   gateway: GatewayNode,
