@@ -72,7 +72,7 @@ export default function InteractiveBoard() {
   }, [])
 
   return (
-    <div className="w-full h-screen bg-gray-50">
+    <div className="w-full h-full bg-gray-50">
       <ReactFlowProvider>
         <BoardContent />
       </ReactFlowProvider>
