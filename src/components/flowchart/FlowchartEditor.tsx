@@ -1,18 +1,27 @@
 "use client"
 
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useRef, useState, type DragEvent } from "react"
 import ReactFlow, {
   type Edge,
+  type Node,
   addEdge,
   Background,
+  BackgroundVariant,
   type Connection,
   Controls,
   MiniMap,
   useNodesState,
   useEdgesState,
   ReactFlowProvider,
+  useReactFlow,
 } from "reactflow"
 import "reactflow/dist/style.css"
+
+import { FlowchartSidebar } from "./FlowchartSidebar"
+import { StartNode } from "./nodes/StartNode"
+import { ProcessNode } from "./nodes/ProcessNode"
+import { DecisionNode } from "./nodes/DecisionNode"
+import { ConnectorNode } from "./nodes/ConnectorNode"
 
 // Suppress ResizeObserver error
 const suppressResizeObserverError = () => {
@@ -47,9 +56,22 @@ export default function FlowchartEditor() {
   )
 }
 
+// Define node types for ReactFlow
+const nodeTypes = {
+  startNode: StartNode,
+  endNode: StartNode, // StartNode handles both start and end types
+  processNode: ProcessNode,
+  decisionNode: DecisionNode,
+  connectorNode: ConnectorNode,
+}
+
 function FlowchartContent() {
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
+  const [isDragOver, setIsDragOver] = useState(false)
+  const reactFlowWrapper = useRef<HTMLDivElement>(null)
+  const { screenToFlowPosition } = useReactFlow()
+  let nodeId = useRef(0)
 
   const onConnect = useCallback(
     (connection: Edge | Connection) => {
@@ -78,6 +100,84 @@ function FlowchartContent() {
     [deleteSelected],
   )
 
+  // Handle node updates from within node components
+  const onNodeUpdate = useCallback((id: string, updates: object) => {
+    setNodes((nodes) =>
+      nodes.map((node) =>
+        node.id === id
+          ? { ...node, data: { ...node.data, ...updates } }
+          : node
+      )
+    )
+  }, [setNodes])
+
+  // Handle drag over for drop zone
+  const onDragOver = useCallback((event: DragEvent) => {
+    event.preventDefault()
+    event.dataTransfer.dropEffect = "move"
+  }, [])
+
+  // Handle drag enter to show drop zone feedback
+  const onDragEnter = useCallback((event: DragEvent) => {
+    event.preventDefault()
+    const type = event.dataTransfer.types.includes("application/reactflow")
+    if (type) {
+      setIsDragOver(true)
+    }
+  }, [])
+
+  // Handle drag leave to hide drop zone feedback
+  const onDragLeave = useCallback((event: DragEvent) => {
+    event.preventDefault()
+    // Only hide feedback if we're leaving the drop zone entirely
+    if (!event.currentTarget.contains(event.relatedTarget as Element)) {
+      setIsDragOver(false)
+    }
+  }, [])
+
+  // Handle drop to create new nodes
+  const onDrop = useCallback(
+    (event: DragEvent) => {
+      event.preventDefault()
+      setIsDragOver(false)
+
+      const type = event.dataTransfer.getData("application/reactflow")
+      const nodeDataString = event.dataTransfer.getData("application/json")
+      
+      if (!type || !nodeDataString) {
+        return
+      }
+
+      let nodeData
+      try {
+        nodeData = JSON.parse(nodeDataString)
+      } catch (error) {
+        console.error("Failed to parse node data:", error)
+        return
+      }
+
+      if (reactFlowWrapper.current) {
+        const position = screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        })
+
+        const newNode: Node = {
+          id: `${type}-${nodeId.current++}`,
+          type,
+          position,
+          data: {
+            ...nodeData,
+            onUpdate: onNodeUpdate,
+          },
+        }
+
+        setNodes((nodes) => nodes.concat(newNode))
+      }
+    },
+    [screenToFlowPosition, setNodes, onNodeUpdate]
+  )
+
   useEffect(() => {
     document.addEventListener("keydown", onKeyDown as unknown as EventListener)
     return () => {
@@ -87,21 +187,32 @@ function FlowchartContent() {
 
   return (
     <div className="flex h-full">
-      {/* Sidebar placeholder */}
-      <div className="w-80 bg-white border-r border-gray-200 flex-shrink-0">
-        <div className="p-4">
-          <h2 className="text-lg font-semibold mb-4">Flowchart Editor</h2>
-          <p className="text-sm text-gray-600">
-            Drag and drop flowchart nodes will be available here.
-          </p>
-        </div>
-      </div>
+      {/* Flowchart Sidebar */}
+      <FlowchartSidebar />
 
       {/* Main Canvas */}
-      <div className="flex-1 relative min-w-0">
+      <div 
+        className={`flex-1 relative min-w-0 transition-colors ${
+          isDragOver ? "bg-blue-50" : ""
+        }`}
+        ref={reactFlowWrapper}
+        onDrop={onDrop}
+        onDragOver={onDragOver}
+        onDragEnter={onDragEnter}
+        onDragLeave={onDragLeave}
+      >
+        {/* Drop zone indicator */}
+        {isDragOver && (
+          <div className="absolute inset-4 border-2 border-dashed border-blue-400 bg-blue-50/50 rounded-lg flex items-center justify-center z-10 pointer-events-none">
+            <div className="text-blue-600 text-lg font-medium">
+              Drop node here to add to flowchart
+            </div>
+          </div>
+        )}
         <ReactFlow
           nodes={nodes}
           edges={edges}
+          nodeTypes={nodeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
@@ -116,7 +227,7 @@ function FlowchartContent() {
         >
           <Controls />
           <MiniMap position="top-right" />
-          <Background variant="dot" gap={12} size={1} />
+          <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
         </ReactFlow>
       </div>
     </div>
