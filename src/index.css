@@ -118,3 +118,62 @@
     @apply bg-background text-foreground;
   }
 }
+/* 
+ Flowchart Edge Styles */
+.flowchart-edge {
+  transition: stroke-width 0.2s ease, stroke 0.2s ease;
+}
+
+.flowchart-edge:hover {
+  stroke-width: 3px !important;
+  stroke: #2563eb !important;
+}
+
+.flowchart-edge.selected {
+  stroke-width: 3px !important;
+  stroke: #dc2626 !important;
+}
+
+.flowchart-edge.selected .react-flow__edge-path {
+  stroke: #dc2626 !important;
+  stroke-width: 3px !important;
+}
+
+/* ReactFlow edge selection styling */
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #dc2626 !important;
+  stroke-width: 3px !important;
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: #2563eb !important;
+  stroke-width: 3px !important;
+}
+
+/* Arrow marker styling for selected/hovered edges */
+.react-flow__edge.selected .react-flow__arrowhead {
+  fill: #dc2626 !important;
+}
+
+.react-flow__edge:hover .react-flow__arrowhead {
+  fill: #2563eb !important;
+}/* Flo
+wchart Node Selection Styles */
+.react-flow__node.selected {
+  box-shadow: 0 0 0 2px #2563eb, 0 0 0 4px rgba(37, 99, 235, 0.2) !important;
+}
+
+.react-flow__node:hover {
+  box-shadow: 0 0 0 1px #6b7280, 0 0 0 3px rgba(107, 114, 128, 0.1) !important;
+}
+
+/* Multi-selection styling */
+.react-flow__node.selected.multi-selected {
+  box-shadow: 0 0 0 2px #7c3aed, 0 0 0 4px rgba(124, 58, 237, 0.2) !important;
+}
+
+/* Selection box for bulk selection */
+.react-flow__selection {
+  background: rgba(37, 99, 235, 0.1) !important;
+  border: 1px dashed #2563eb !important;
+}

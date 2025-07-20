@@ -14,6 +14,7 @@ import ReactFlow, {
   useEdgesState,
   ReactFlowProvider,
   useReactFlow,
+  MarkerType,
 } from "reactflow"
 import "reactflow/dist/style.css"
 
@@ -69,36 +70,140 @@ function FlowchartContent() {
   const [nodes, setNodes, onNodesChange] = useNodesState([])
   const [edges, setEdges, onEdgesChange] = useEdgesState([])
   const [isDragOver, setIsDragOver] = useState(false)
+  const [flowchartMetadata, setFlowchartMetadata] = useState({
+    title: "Untitled Flowchart",
+    description: "",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  })
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
   const { screenToFlowPosition } = useReactFlow()
   let nodeId = useRef(0)
 
+  // Validate connections for flowchart logic
+  const isValidConnection = useCallback((connection: Connection) => {
+    const { source, target } = connection
+    
+    // Prevent self-connections
+    if (source === target) {
+      return false
+    }
+    
+    // Check if connection already exists
+    const existingConnection = edges.find(
+      (edge) => edge.source === source && edge.target === target
+    )
+    if (existingConnection) {
+      return false
+    }
+    
+    // Get source and target nodes
+    const sourceNode = nodes.find((node) => node.id === source)
+    const targetNode = nodes.find((node) => node.id === target)
+    
+    if (!sourceNode || !targetNode) {
+      return false
+    }
+    
+    // Flowchart-specific validation rules
+    // End nodes should not have outgoing connections
+    if (sourceNode.data?.nodeType === 'end') {
+      return false
+    }
+    
+    // Start nodes should not have incoming connections (except from other start nodes)
+    if (targetNode.data?.nodeType === 'start' && sourceNode.data?.nodeType !== 'start') {
+      return false
+    }
+    
+    return true
+  }, [edges, nodes])
+
   const onConnect = useCallback(
     (connection: Edge | Connection) => {
-      setEdges((eds) => addEdge(connection, eds))
+      // Validate the connection before adding it
+      if (!isValidConnection(connection)) {
+        return
+      }
+      
+      // Create edge with enhanced styling
+      const newEdge = {
+        ...connection,
+        type: 'default',
+        animated: false,
+        style: {
+          stroke: '#374151',
+          strokeWidth: 2,
+        },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: '#374151',
+          width: 20,
+          height: 20,
+        },
+        // Add hover and selection styles
+        className: 'flowchart-edge',
+      }
+      
+      setEdges((eds) => addEdge(newEdge, eds))
+      // Update flowchart timestamp when edges are added
+      setFlowchartMetadata((prev) => ({
+        ...prev,
+        updatedAt: new Date(),
+      }))
     },
-    [setEdges],
+    [setEdges, isValidConnection],
   )
 
   const deleteSelected = useCallback(() => {
     setEdges((eds) => eds.filter((edge) => !edge.selected))
     setNodes((nodes) => nodes.filter((node) => !node.selected))
+    // Update flowchart timestamp when nodes or edges are deleted
+    setFlowchartMetadata((prev) => ({
+      ...prev,
+      updatedAt: new Date(),
+    }))
+  }, [setNodes, setEdges])
+
+  const selectAll = useCallback(() => {
+    setNodes((nodes) => nodes.map((node) => ({ ...node, selected: true })))
+    setEdges((edges) => edges.map((edge) => ({ ...edge, selected: true })))
+  }, [setNodes, setEdges])
+
+  const deselectAll = useCallback(() => {
+    setNodes((nodes) => nodes.map((node) => ({ ...node, selected: false })))
+    setEdges((edges) => edges.map((edge) => ({ ...edge, selected: false })))
   }, [setNodes, setEdges])
 
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
-      // Prevent deletion when an input field is focused
+      // Prevent actions when an input field is focused
       const activeElement = document.activeElement
       if (activeElement && (activeElement.tagName === "INPUT" || activeElement.tagName === "TEXTAREA")) {
         return
       }
 
+      // Handle keyboard shortcuts
       if (event.key === "Delete" || event.key === "Backspace") {
         deleteSelected()
+      } else if (event.key === "a" && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault()
+        selectAll()
+      } else if (event.key === "Escape") {
+        deselectAll()
       }
     },
-    [deleteSelected],
+    [deleteSelected, selectAll, deselectAll],
   )
+
+  // Handle flowchart metadata updates
+  const updateFlowchartMetadata = useCallback((updates: Partial<typeof flowchartMetadata>) => {
+    setFlowchartMetadata((prev) => ({
+      ...prev,
+      ...updates,
+      updatedAt: new Date(),
+    }))
+  }, [])
 
   // Handle node updates from within node components
   const onNodeUpdate = useCallback((id: string, updates: object) => {
@@ -109,6 +214,11 @@ function FlowchartContent() {
           : node
       )
     )
+    // Update flowchart timestamp when nodes are modified
+    setFlowchartMetadata((prev) => ({
+      ...prev,
+      updatedAt: new Date(),
+    }))
   }, [setNodes])
 
   // Handle drag over for drop zone
@@ -173,6 +283,11 @@ function FlowchartContent() {
         }
 
         setNodes((nodes) => nodes.concat(newNode))
+        // Update flowchart timestamp when new nodes are added
+        setFlowchartMetadata((prev) => ({
+          ...prev,
+          updatedAt: new Date(),
+        }))
       }
     },
     [screenToFlowPosition, setNodes, onNodeUpdate]
@@ -188,7 +303,12 @@ function FlowchartContent() {
   return (
     <div className="flex h-full">
       {/* Flowchart Sidebar */}
-      <FlowchartSidebar />
+      <FlowchartSidebar 
+        flowchartMetadata={flowchartMetadata}
+        onUpdateMetadata={updateFlowchartMetadata}
+        selectedNodesCount={nodes.filter(node => node.selected).length}
+        selectedEdgesCount={edges.filter(edge => edge.selected).length}
+      />
 
       {/* Main Canvas */}
       <div 
@@ -224,6 +344,16 @@ function FlowchartContent() {
           maxZoom={2}
           attributionPosition="bottom-left"
           onKeyDown={onKeyDown}
+          connectionLineStyle={{
+            stroke: '#2563eb',
+            strokeWidth: 2,
+            strokeDasharray: '5,5',
+          }}
+          connectionLineType="smoothstep"
+          multiSelectionKeyCode="Control"
+          selectionKeyCode="Shift"
+          panOnDrag={[1, 2]}
+          selectNodesOnDrag={false}
         >
           <Controls />
           <MiniMap position="top-right" />

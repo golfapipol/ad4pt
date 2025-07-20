@@ -72,11 +72,22 @@ const nodePalette: NodePaletteItem[] = [
   }
 ]
 
-interface FlowchartSidebarProps {
-  onNodeDragStart?: (event: DragEvent, nodeType: string, nodeData: any) => void
+interface FlowchartMetadata {
+  title: string
+  description: string
+  createdAt: Date
+  updatedAt: Date
 }
 
-export function FlowchartSidebar({ onNodeDragStart }: FlowchartSidebarProps) {
+interface FlowchartSidebarProps {
+  onNodeDragStart?: (event: DragEvent, nodeType: string, nodeData: any) => void
+  flowchartMetadata?: FlowchartMetadata
+  onUpdateMetadata?: (updates: Partial<FlowchartMetadata>) => void
+  selectedNodesCount?: number
+  selectedEdgesCount?: number
+}
+
+export function FlowchartSidebar({ onNodeDragStart, flowchartMetadata, onUpdateMetadata, selectedNodesCount = 0, selectedEdgesCount = 0 }: FlowchartSidebarProps) {
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
 
   const handleDragStart = (event: DragEvent, item: NodePaletteItem) => {
@@ -105,6 +116,55 @@ export function FlowchartSidebar({ onNodeDragStart }: FlowchartSidebarProps) {
           Drag nodes onto the canvas to build your flowchart
         </p>
       </div>
+
+      {/* Flowchart Metadata */}
+      {flowchartMetadata && onUpdateMetadata && (
+        <div className="p-4 border-b border-gray-100">
+          <h3 className="text-sm font-medium text-gray-700 mb-3">Flowchart Details</h3>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Title
+              </label>
+              <input
+                type="text"
+                value={flowchartMetadata.title}
+                onChange={(e) => onUpdateMetadata({ title: e.target.value })}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Enter flowchart title"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Description
+              </label>
+              <textarea
+                value={flowchartMetadata.description}
+                onChange={(e) => onUpdateMetadata({ description: e.target.value })}
+                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                rows={2}
+                placeholder="Enter flowchart description"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Selection Status */}
+      {(selectedNodesCount > 0 || selectedEdgesCount > 0) && (
+        <div className="p-4 border-b border-gray-100 bg-blue-50">
+          <h3 className="text-sm font-medium text-blue-700 mb-2">Selection</h3>
+          <div className="text-xs text-blue-600 space-y-1">
+            {selectedNodesCount > 0 && (
+              <div>• {selectedNodesCount} node{selectedNodesCount !== 1 ? 's' : ''} selected</div>
+            )}
+            {selectedEdgesCount > 0 && (
+              <div>• {selectedEdgesCount} connection{selectedEdgesCount !== 1 ? 's' : ''} selected</div>
+            )}
+            <div className="text-blue-500 mt-2">Press Delete to remove selected items</div>
+          </div>
+        </div>
+      )}
 
       {/* Node Palette */}
       <div className="flex-1 p-4">
@@ -146,6 +206,15 @@ export function FlowchartSidebar({ onNodeDragStart }: FlowchartSidebarProps) {
           <li>• Double-click nodes to edit labels</li>
           <li>• Connect nodes by dragging from handles</li>
           <li>• Press Delete to remove selected items</li>
+        </ul>
+        
+        <h4 className="text-sm font-medium text-gray-700 mb-2 mt-4">Keyboard Shortcuts</h4>
+        <ul className="text-xs text-gray-600 space-y-1">
+          <li>• <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">Ctrl+A</kbd> Select all</li>
+          <li>• <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">Ctrl+Click</kbd> Multi-select</li>
+          <li>• <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">Shift+Drag</kbd> Box select</li>
+          <li>• <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">Esc</kbd> Deselect all</li>
+          <li>• <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">Del</kbd> Delete selected</li>
         </ul>
       </div>
     </div>
