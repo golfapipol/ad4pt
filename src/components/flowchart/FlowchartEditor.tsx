@@ -78,10 +78,10 @@ function FlowchartContent() {
   })
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
   const { screenToFlowPosition } = useReactFlow()
-  let nodeId = useRef(0)
+  const nodeId = useRef(0)
 
   // Validate connections for flowchart logic
-  const isValidConnection = useCallback((connection: Connection) => {
+  const isValidConnection = useCallback((connection: Connection | Edge) => {
     const { source, target } = connection
     
     // Prevent self-connections
@@ -308,6 +308,8 @@ function FlowchartContent() {
         onUpdateMetadata={updateFlowchartMetadata}
         selectedNodesCount={nodes.filter(node => node.selected).length}
         selectedEdgesCount={edges.filter(edge => edge.selected).length}
+        nodes={nodes}
+        edges={edges}
       />
 
       {/* Main Canvas */}
@@ -349,7 +351,6 @@ function FlowchartContent() {
             strokeWidth: 2,
             strokeDasharray: '5,5',
           }}
-          connectionLineType="smoothstep"
           multiSelectionKeyCode="Control"
           selectionKeyCode="Shift"
           panOnDrag={[1, 2]}

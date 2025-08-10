@@ -1,5 +1,8 @@
 import { useState, type DragEvent } from "react"
-import { Play, Settings, HelpCircle, Circle, Square } from "lucide-react"
+import { Play, Settings, HelpCircle, Circle, Square, FileText } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { MermaidExporter } from "./MermaidExporter"
+import { type Node, type Edge } from "reactflow"
 
 interface NodePaletteItem {
   type: string
@@ -85,10 +88,13 @@ interface FlowchartSidebarProps {
   onUpdateMetadata?: (updates: Partial<FlowchartMetadata>) => void
   selectedNodesCount?: number
   selectedEdgesCount?: number
+  nodes?: Node[]
+  edges?: Edge[]
 }
 
-export function FlowchartSidebar({ onNodeDragStart, flowchartMetadata, onUpdateMetadata, selectedNodesCount = 0, selectedEdgesCount = 0 }: FlowchartSidebarProps) {
+export function FlowchartSidebar({ onNodeDragStart, flowchartMetadata, onUpdateMetadata, selectedNodesCount = 0, selectedEdgesCount = 0, nodes = [], edges = [] }: FlowchartSidebarProps) {
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
+  const [showMermaidExporter, setShowMermaidExporter] = useState(false)
 
   const handleDragStart = (event: DragEvent, item: NodePaletteItem) => {
     // Set drag data for the drop handler
@@ -198,6 +204,25 @@ export function FlowchartSidebar({ onNodeDragStart, flowchartMetadata, onUpdateM
         </div>
       </div>
 
+      {/* Export Section */}
+      <div className="p-4 border-t border-gray-100">
+        <h4 className="text-sm font-medium text-gray-700 mb-3">Export</h4>
+        <Button
+          onClick={() => setShowMermaidExporter(true)}
+          disabled={nodes.length === 0}
+          className="w-full flex items-center gap-2"
+          variant="outline"
+        >
+          <FileText className="w-4 h-4" />
+          Export to Mermaid.js
+        </Button>
+        {nodes.length === 0 && (
+          <p className="text-xs text-gray-500 mt-2">
+            Add nodes to your flowchart to enable export
+          </p>
+        )}
+      </div>
+
       {/* Instructions */}
       <div className="p-4 border-t border-gray-100 bg-gray-50">
         <h4 className="text-sm font-medium text-gray-700 mb-2">Instructions</h4>
@@ -217,6 +242,15 @@ export function FlowchartSidebar({ onNodeDragStart, flowchartMetadata, onUpdateM
           <li>• <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">Del</kbd> Delete selected</li>
         </ul>
       </div>
+
+      {/* Mermaid Exporter Modal */}
+      <MermaidExporter
+        isOpen={showMermaidExporter}
+        onClose={() => setShowMermaidExporter(false)}
+        nodes={nodes}
+        edges={edges}
+        metadata={flowchartMetadata}
+      />
     </div>
   )
 }
