@@ -1,5 +1,5 @@
-import { useState, type DragEvent } from "react"
-import { Play, Settings, HelpCircle, Circle, Square, FileText } from "lucide-react"
+import { useState, useEffect, useRef, type DragEvent } from "react"
+import { Play, Settings, HelpCircle, Circle, Square, FileText, Save, CheckCircle, AlertCircle, Clock, Plus, Trash2, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { MermaidExporter } from "./MermaidExporter"
 import { type Node, type Edge } from "reactflow"
@@ -90,11 +90,35 @@ interface FlowchartSidebarProps {
   selectedEdgesCount?: number
   nodes?: Node[]
   edges?: Edge[]
+  saveStatus?: 'saved' | 'saving' | 'error' | 'unsaved'
+  saveError?: string | null
+  currentFlowchartId?: string
+  onManualSave?: () => Promise<void>
+  onNewFlowchart?: (template?: 'empty' | 'basic' | 'decision') => void
+  onClearFlowchart?: () => void
 }
 
-export function FlowchartSidebar({ onNodeDragStart, flowchartMetadata, onUpdateMetadata, selectedNodesCount = 0, selectedEdgesCount = 0, nodes = [], edges = [] }: FlowchartSidebarProps) {
+export function FlowchartSidebar({ 
+  onNodeDragStart, 
+  flowchartMetadata, 
+  onUpdateMetadata, 
+  selectedNodesCount = 0, 
+  selectedEdgesCount = 0, 
+  nodes = [], 
+  edges = [],
+  saveStatus = 'saved',
+  saveError = null,
+  currentFlowchartId,
+  onManualSave,
+  onNewFlowchart,
+  onClearFlowchart
+}: FlowchartSidebarProps) {
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [showMermaidExporter, setShowMermaidExporter] = useState(false)
+  const [isManualSaving, setIsManualSaving] = useState(false)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [showNewFlowchartMenu, setShowNewFlowchartMenu] = useState(false)
+  const newFlowchartMenuRef = useRef<HTMLDivElement>(null)
 
   const handleDragStart = (event: DragEvent, item: NodePaletteItem) => {
     // Set drag data for the drop handler
@@ -113,6 +137,92 @@ export function FlowchartSidebar({ onNodeDragStart, flowchartMetadata, onUpdateM
     setDraggedItem(null)
   }
 
+  const handleManualSave = async () => {
+    if (!onManualSave) return
+    
+    try {
+      setIsManualSaving(true)
+      await onManualSave()
+    } catch (error) {
+      console.error('Manual save failed:', error)
+    } finally {
+      setIsManualSaving(false)
+    }
+  }
+
+  const getSaveStatusIcon = () => {
+    switch (saveStatus) {
+      case 'saved':
+        return <CheckCircle className="w-4 h-4 text-green-600" />
+      case 'saving':
+        return <Clock className="w-4 h-4 text-blue-600 animate-spin" />
+      case 'error':
+        return <AlertCircle className="w-4 h-4 text-red-600" />
+      case 'unsaved':
+        return <Save className="w-4 h-4 text-orange-600" />
+      default:
+        return <Save className="w-4 h-4 text-gray-600" />
+    }
+  }
+
+  const getSaveStatusText = () => {
+    switch (saveStatus) {
+      case 'saved':
+        return 'All changes saved'
+      case 'saving':
+        return 'Saving changes...'
+      case 'error':
+        return saveError || 'Save failed'
+      case 'unsaved':
+        return 'Unsaved changes'
+      default:
+        return 'Unknown status'
+    }
+  }
+
+  const getSaveStatusColor = () => {
+    switch (saveStatus) {
+      case 'saved':
+        return 'text-green-600'
+      case 'saving':
+        return 'text-blue-600'
+      case 'error':
+        return 'text-red-600'
+      case 'unsaved':
+        return 'text-orange-600'
+      default:
+        return 'text-gray-600'
+    }
+  }
+
+  const handleNewFlowchart = (template: 'empty' | 'basic' | 'decision' = 'empty') => {
+    onNewFlowchart?.(template)
+    setShowNewFlowchartMenu(false)
+  }
+
+  const handleClearFlowchart = () => {
+    onClearFlowchart?.()
+    setShowClearConfirm(false)
+  }
+
+  const hasContent = nodes.length > 0 || edges.length > 0
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (newFlowchartMenuRef.current && !newFlowchartMenuRef.current.contains(event.target as Node)) {
+        setShowNewFlowchartMenu(false)
+      }
+    }
+
+    if (showNewFlowchartMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [showNewFlowchartMenu])
+
   return (
     <div className="w-80 bg-white border-r border-gray-200 flex-shrink-0 flex flex-col">
       {/* Header */}
@@ -121,6 +231,122 @@ export function FlowchartSidebar({ onNodeDragStart, flowchartMetadata, onUpdateM
         <p className="text-sm text-gray-600 mt-1">
           Drag nodes onto the canvas to build your flowchart
         </p>
+      </div>
+
+      {/* Save Status */}
+      <div className="p-4 border-b border-gray-100">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-medium text-gray-700">Save Status</h3>
+          {onManualSave && (
+            <Button
+              onClick={handleManualSave}
+              disabled={isManualSaving || saveStatus === 'saving'}
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-xs"
+            >
+              <Save className="w-3 h-3 mr-1" />
+              Save
+            </Button>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {getSaveStatusIcon()}
+          <span className={`text-xs ${getSaveStatusColor()}`}>
+            {getSaveStatusText()}
+          </span>
+        </div>
+        {currentFlowchartId && (
+          <div className="text-xs text-gray-500 mt-1">
+            ID: {currentFlowchartId.slice(-8)}
+          </div>
+        )}
+      </div>
+
+      {/* New/Clear Flowchart */}
+      <div className="p-4 border-b border-gray-100">
+        <h3 className="text-sm font-medium text-gray-700 mb-3">Flowchart Actions</h3>
+        <div className="space-y-2">
+          {/* New Flowchart Dropdown */}
+          <div className="relative" ref={newFlowchartMenuRef}>
+            <Button
+              onClick={() => setShowNewFlowchartMenu(!showNewFlowchartMenu)}
+              className="w-full flex items-center justify-between"
+              variant="outline"
+              size="sm"
+            >
+              <div className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                New Flowchart
+              </div>
+              <ChevronDown className={`w-4 h-4 transition-transform ${showNewFlowchartMenu ? 'rotate-180' : ''}`} />
+            </Button>
+            
+            {showNewFlowchartMenu && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                <button
+                  onClick={() => handleNewFlowchart('empty')}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 first:rounded-t-md"
+                >
+                  Empty Flowchart
+                </button>
+                <button
+                  onClick={() => handleNewFlowchart('basic')}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 border-t border-gray-100"
+                >
+                  Basic Process Flow
+                </button>
+                <button
+                  onClick={() => handleNewFlowchart('decision')}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 border-t border-gray-100 last:rounded-b-md"
+                >
+                  Decision Flow
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Clear Flowchart */}
+          {hasContent && (
+            <>
+              {!showClearConfirm ? (
+                <Button
+                  onClick={() => setShowClearConfirm(true)}
+                  className="w-full flex items-center gap-2"
+                  variant="outline"
+                  size="sm"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Clear Flowchart
+                </Button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="text-xs text-red-600 font-medium">
+                    Are you sure? This will delete all nodes and connections.
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleClearFlowchart}
+                      size="sm"
+                      variant="destructive"
+                      className="flex-1"
+                    >
+                      Yes, Clear
+                    </Button>
+                    <Button
+                      onClick={() => setShowClearConfirm(false)}
+                      size="sm"
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Flowchart Metadata */}
@@ -151,6 +377,10 @@ export function FlowchartSidebar({ onNodeDragStart, flowchartMetadata, onUpdateM
                 rows={2}
                 placeholder="Enter flowchart description"
               />
+            </div>
+            <div className="text-xs text-gray-500 space-y-1">
+              <div>Created: {flowchartMetadata.createdAt.toLocaleDateString()}</div>
+              <div>Updated: {flowchartMetadata.updatedAt.toLocaleString()}</div>
             </div>
           </div>
         </div>
