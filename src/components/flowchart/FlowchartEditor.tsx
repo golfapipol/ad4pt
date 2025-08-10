@@ -23,6 +23,15 @@ import { StartNode } from "./nodes/StartNode"
 import { ProcessNode } from "./nodes/ProcessNode"
 import { DecisionNode } from "./nodes/DecisionNode"
 import { ConnectorNode } from "./nodes/ConnectorNode"
+import { 
+  saveFlowchartData, 
+  loadFlowchartData, 
+  autoSaveFlowchartData, 
+  clearFlowchartData,
+  createNewFlowchart,
+  FlowchartStorageError,
+  type FlowchartData 
+} from "@/lib/flowchartStorage"
 
 // Suppress ResizeObserver error
 const suppressResizeObserverError = () => {
@@ -76,6 +85,9 @@ function FlowchartContent() {
     createdAt: new Date(),
     updatedAt: new Date(),
   })
+  const [currentFlowchartId, setCurrentFlowchartId] = useState<string | undefined>(undefined)
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | 'unsaved'>('saved')
+  const [saveError, setSaveError] = useState<string | null>(null)
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
   const { screenToFlowPosition } = useReactFlow()
   const nodeId = useRef(0)
@@ -293,6 +305,156 @@ function FlowchartContent() {
     [screenToFlowPosition, setNodes, onNodeUpdate]
   )
 
+  // Auto-save functionality
+  const performAutoSave = useCallback(async () => {
+    if (nodes.length === 0 && edges.length === 0) {
+      // Don't save empty flowcharts
+      return
+    }
+
+    try {
+      setSaveStatus('saving')
+      setSaveError(null)
+      
+      const savedData = await autoSaveFlowchartData(
+        nodes,
+        edges,
+        flowchartMetadata,
+        currentFlowchartId
+      )
+      
+      setCurrentFlowchartId(savedData.id)
+      setSaveStatus('saved')
+    } catch (error) {
+      console.error('Auto-save failed:', error)
+      setSaveStatus('error')
+      setSaveError(error instanceof FlowchartStorageError ? error.message : 'Failed to save flowchart')
+    }
+  }, [nodes, edges, flowchartMetadata, currentFlowchartId])
+
+  // Load existing flowchart data on mount
+  useEffect(() => {
+    const loadExistingData = async () => {
+      try {
+        const savedData = loadFlowchartData()
+        if (savedData) {
+          // Update node data with onUpdate callback
+          const nodesWithCallbacks = savedData.nodes.map(node => ({
+            ...node,
+            data: {
+              ...node.data,
+              onUpdate: onNodeUpdate,
+            }
+          }))
+          
+          setNodes(nodesWithCallbacks)
+          setEdges(savedData.edges)
+          setFlowchartMetadata({
+            title: savedData.title,
+            description: savedData.description || "",
+            createdAt: savedData.createdAt,
+            updatedAt: savedData.updatedAt,
+          })
+          setCurrentFlowchartId(savedData.id)
+          
+          // Update nodeId counter to avoid conflicts
+          const maxId = Math.max(
+            ...savedData.nodes
+              .map(node => {
+                const match = node.id.match(/-(\d+)$/)
+                return match ? parseInt(match[1], 10) : 0
+              })
+              .filter(id => !isNaN(id))
+          )
+          nodeId.current = maxId + 1
+          
+          setSaveStatus('saved')
+        }
+      } catch (error) {
+        console.error('Failed to load flowchart data:', error)
+        setSaveError(error instanceof FlowchartStorageError ? error.message : 'Failed to load flowchart')
+        setSaveStatus('error')
+      }
+    }
+
+    loadExistingData()
+  }, [setNodes, setEdges, onNodeUpdate])
+
+  // Clear flowchart and create new one
+  const createNewFlowchartHandler = useCallback((template: 'empty' | 'basic' | 'decision' = 'empty') => {
+    try {
+      const newFlowchart = createNewFlowchart(template)
+      
+      // Update node data with onUpdate callback
+      const nodesWithCallbacks = newFlowchart.nodes.map(node => ({
+        ...node,
+        data: {
+          ...node.data,
+          onUpdate: onNodeUpdate,
+        }
+      }))
+      
+      setNodes(nodesWithCallbacks)
+      setEdges(newFlowchart.edges)
+      setFlowchartMetadata({
+        title: newFlowchart.title,
+        description: newFlowchart.description || "",
+        createdAt: newFlowchart.createdAt,
+        updatedAt: newFlowchart.updatedAt,
+      })
+      setCurrentFlowchartId(undefined) // New flowchart doesn't have an ID yet
+      setSaveStatus('unsaved')
+      setSaveError(null)
+      
+      // Reset node ID counter
+      const maxId = Math.max(
+        ...newFlowchart.nodes
+          .map(node => {
+            const match = node.id.match(/-(\d+)$/)
+            return match ? parseInt(match[1], 10) : 0
+          })
+          .filter(id => !isNaN(id))
+      )
+      nodeId.current = maxId + 1
+      
+    } catch (error) {
+      console.error('Failed to create new flowchart:', error)
+      setSaveError('Failed to create new flowchart')
+      setSaveStatus('error')
+    }
+  }, [setNodes, setEdges, onNodeUpdate])
+
+  // Clear current flowchart
+  const clearFlowchartHandler = useCallback(() => {
+    try {
+      clearFlowchartData()
+      setNodes([])
+      setEdges([])
+      setFlowchartMetadata({
+        title: "Untitled Flowchart",
+        description: "",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      setCurrentFlowchartId(undefined)
+      setSaveStatus('saved')
+      setSaveError(null)
+      nodeId.current = 0
+    } catch (error) {
+      console.error('Failed to clear flowchart:', error)
+      setSaveError('Failed to clear flowchart')
+      setSaveStatus('error')
+    }
+  }, [setNodes, setEdges])
+
+  // Auto-save when flowchart data changes
+  useEffect(() => {
+    if (nodes.length > 0 || edges.length > 0) {
+      setSaveStatus('unsaved')
+      performAutoSave()
+    }
+  }, [nodes, edges, flowchartMetadata, performAutoSave])
+
   useEffect(() => {
     document.addEventListener("keydown", onKeyDown as unknown as EventListener)
     return () => {
@@ -310,6 +472,12 @@ function FlowchartContent() {
         selectedEdgesCount={edges.filter(edge => edge.selected).length}
         nodes={nodes}
         edges={edges}
+        saveStatus={saveStatus}
+        saveError={saveError}
+        currentFlowchartId={currentFlowchartId}
+        onManualSave={performAutoSave}
+        onNewFlowchart={createNewFlowchartHandler}
+        onClearFlowchart={clearFlowchartHandler}
       />
 
       {/* Main Canvas */}
