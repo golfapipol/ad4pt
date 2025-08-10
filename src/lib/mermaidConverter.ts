@@ -255,11 +255,11 @@ export function validateFlowchartForMermaid(nodes: Node[], edges: Edge[]): {
     }
   })
   
-  // Check for circular references (basic check)
-  const hasCircularReference = detectCircularReferences(nodes, edges)
-  if (hasCircularReference) {
-    warnings.push('Potential circular references detected in flowchart')
-  }
+  // // Check for circular references (basic check)
+  // const hasCircularReference = detectCircularReferences(nodes, edges)
+  // if (hasCircularReference) {
+  //   warnings.push('Potential circular references detected in flowchart')
+  // }
   
   return {
     isValid: errors.length === 0,
