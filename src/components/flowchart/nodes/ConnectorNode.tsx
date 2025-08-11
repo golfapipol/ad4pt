@@ -9,13 +9,18 @@ interface ConnectorNodeData {
   onUpdate?: (id: string, updates: object) => void
 }
 
-export function ConnectorNode({ data, selected }: NodeProps<ConnectorNodeData>) {
+// Extend NodeProps to include id
+interface ConnectorNodeProps extends NodeProps<ConnectorNodeData> {
+  id: string
+}
+
+export function ConnectorNode({ data, selected, id }: ConnectorNodeProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [label, setLabel] = useState(data.label || "")
 
   const handleLabelUpdate = () => {
     setIsEditing(false)
-    data.onUpdate?.(data.id, { label })
+    data.onUpdate?.(id, { label })
   }
 
   const backgroundColor = data.backgroundColor || 'bg-gray-200'
@@ -23,7 +28,19 @@ export function ConnectorNode({ data, selected }: NodeProps<ConnectorNodeData>) 
   const borderColor = selected ? 'border-blue-500' : 'border-gray-400'
 
   return (
-    <div className="relative flex flex-col items-center">
+    <div 
+      className="relative flex flex-col items-center"
+      role="button"
+      tabIndex={0}
+      aria-label={`Connector node${label ? `: ${label}` : ''}. Used to connect flow paths. Double-click to edit label.`}
+      aria-describedby={`${id}-description`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          setIsEditing(true)
+        }
+      }}
+    >
       {/* Small circular connector */}
       <div
         className={`w-8 h-8 border-2 rounded-full shadow-sm ${backgroundColor} ${borderColor} flex items-center justify-center`}
@@ -68,10 +85,11 @@ export function ConnectorNode({ data, selected }: NodeProps<ConnectorNodeData>) 
                   setIsEditing(false)
                 }
               }}
-              className={`w-16 bg-transparent border-none outline-none text-xs text-center ${textColor}`}
+              className={`w-16 bg-transparent border-none outline-none text-xs text-center ${textColor} focus:ring-2 focus:ring-blue-500 focus:ring-inset`}
               style={{ color: data.textColor }}
               placeholder="Label"
               autoFocus
+              aria-label="Edit connector node label"
             />
           ) : (
             <div 
@@ -94,6 +112,11 @@ export function ConnectorNode({ data, selected }: NodeProps<ConnectorNodeData>) 
           •
         </div>
       )}
+      
+      {/* Hidden description for screen readers */}
+      <div id={`${id}-description`} className="sr-only">
+        Connector node in flowchart. This is a small circular node used to connect different flow paths or organize the layout. {label ? `Label: ${label}` : 'No label provided.'}
+      </div>
     </div>
   )
 }

@@ -20,6 +20,7 @@ import ReactFlow, {
 import "reactflow/dist/style.css"
 
 import { FlowchartSidebar } from "./FlowchartSidebar"
+import { KeyboardShortcutsDialog } from "./KeyboardShortcutsDialog"
 import { StartNode } from "./nodes/StartNode"
 import { ProcessNode } from "./nodes/ProcessNode"
 import { DecisionNode } from "./nodes/DecisionNode"
@@ -89,6 +90,7 @@ function FlowchartContent() {
   const [currentFlowchartId, setCurrentFlowchartId] = useState<string | undefined>(undefined)
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | 'unsaved'>('saved')
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false)
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
   const { screenToFlowPosition, fitView, zoomIn, zoomOut, zoomTo, getZoom, getViewport, setViewport } = useReactFlow()
   const nodeId = useRef(0)
@@ -188,56 +190,174 @@ function FlowchartContent() {
     setEdges((edges) => edges.map((edge) => ({ ...edge, selected: false })))
   }, [setNodes, setEdges])
 
-  // Zoom and pan control functions
+  // Zoom and pan control functions with enhanced smooth interactions
   const handleZoomIn = useCallback(() => {
-    zoomIn({ duration: 300 })
-  }, [zoomIn])
+    const currentZoom = getZoom()
+    const newZoom = Math.min(currentZoom * 1.2, 3) // Limit to maxZoom
+    zoomTo(newZoom, { duration: 400 })
+  }, [zoomTo, getZoom])
 
   const handleZoomOut = useCallback(() => {
-    zoomOut({ duration: 300 })
-  }, [zoomOut])
+    const currentZoom = getZoom()
+    const newZoom = Math.max(currentZoom / 1.2, 0.1) // Limit to minZoom
+    zoomTo(newZoom, { duration: 400 })
+  }, [zoomTo, getZoom])
 
   const handleZoomToFit = useCallback(() => {
+    if (nodes.length === 0) {
+      // If no nodes, just reset to default view
+      setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 500 })
+      return
+    }
+
+    // Enhanced fit view with better padding and limits for large flowcharts
     fitView({ 
-      padding: 0.1, 
-      duration: 500,
+      padding: 0.15, // Increased padding for better visual spacing
+      duration: 600,
       minZoom: 0.1,
-      maxZoom: 1.5
+      maxZoom: 2, // Allow higher zoom for fit view
+      includeHiddenNodes: false
     })
-  }, [fitView])
+  }, [fitView, nodes.length, setViewport])
 
   const handleZoomReset = useCallback(() => {
-    zoomTo(1, { duration: 300 })
+    zoomTo(1, { duration: 400 })
   }, [zoomTo])
 
   const handleCenterView = useCallback(() => {
     if (nodes.length === 0) {
-      // If no nodes, center at origin
-      setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 300 })
+      // If no nodes, center at origin with smooth animation
+      setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 500 })
       return
     }
 
-    // Calculate the center of all nodes
+    // Calculate the bounding box of all nodes for better centering
     const nodePositions = nodes.map(node => ({
       x: node.position.x,
-      y: node.position.y
+      y: node.position.y,
+      width: node.width || 150, // Default node width
+      height: node.height || 50  // Default node height
     }))
 
-    const centerX = nodePositions.reduce((sum, pos) => sum + pos.x, 0) / nodePositions.length
-    const centerY = nodePositions.reduce((sum, pos) => sum + pos.y, 0) / nodePositions.length
+    const minX = Math.min(...nodePositions.map(pos => pos.x))
+    const maxX = Math.max(...nodePositions.map(pos => pos.x + pos.width))
+    const minY = Math.min(...nodePositions.map(pos => pos.y))
+    const maxY = Math.max(...nodePositions.map(pos => pos.y + pos.height))
 
-    // Get current viewport dimensions (approximate)
+    const centerX = (minX + maxX) / 2
+    const centerY = (minY + maxY) / 2
+
+    // Get current viewport dimensions
     const viewportWidth = reactFlowWrapper.current?.clientWidth || 800
     const viewportHeight = reactFlowWrapper.current?.clientHeight || 600
 
-    // Center the view on the calculated center
+    // Center the view on the calculated center with current zoom
     const currentZoom = getZoom()
     setViewport({
       x: viewportWidth / 2 - centerX * currentZoom,
       y: viewportHeight / 2 - centerY * currentZoom,
       zoom: currentZoom
-    }, { duration: 300 })
+    }, { duration: 500 })
   }, [nodes, setViewport, getZoom])
+
+  // Additional zoom control for mouse wheel with smooth scaling
+  const handleWheelZoom = useCallback((event: WheelEvent) => {
+    if (!event.ctrlKey && !event.metaKey) return
+    
+    event.preventDefault()
+    const currentZoom = getZoom()
+    const zoomFactor = event.deltaY > 0 ? 0.9 : 1.1
+    const newZoom = Math.max(0.1, Math.min(3, currentZoom * zoomFactor))
+    
+    zoomTo(newZoom, { duration: 100 })
+  }, [getZoom, zoomTo])
+
+  // Auto-save functionality
+  const performAutoSave = useCallback(async () => {
+    if (nodes.length === 0 && edges.length === 0) {
+      // Don't save empty flowcharts
+      return
+    }
+
+    try {
+      setSaveStatus('saving')
+      setSaveError(null)
+      
+      const savedData = await autoSaveFlowchartData(
+        nodes,
+        edges,
+        flowchartMetadata,
+        currentFlowchartId
+      )
+      
+      setCurrentFlowchartId(savedData.id)
+      setSaveStatus('saved')
+    } catch (error) {
+      console.error('Auto-save failed:', error)
+      setSaveStatus('error')
+      setSaveError(error instanceof FlowchartStorageError ? error.message : 'Failed to save flowchart')
+    }
+  }, [nodes, edges, flowchartMetadata, currentFlowchartId])
+
+   // Handle node updates from within node components
+  const onNodeUpdate = useCallback((id: string, updates: object) => {
+    setNodes((nodes) =>
+      nodes.map((node) =>
+        node.id === id
+          ? { ...node, data: { ...node.data, ...updates } }
+          : node
+      )
+    )
+    // Update flowchart timestamp when nodes are modified
+    setFlowchartMetadata((prev) => ({
+      ...prev,
+      updatedAt: new Date(),
+    }))
+  }, [setNodes])
+
+  // Clear flowchart and create new one
+  const createNewFlowchartHandler = useCallback((template: 'empty' | 'basic' | 'decision' = 'empty') => {
+    try {
+      const newFlowchart = createNewFlowchart(template)
+      
+      // Update node data with onUpdate callback
+      const nodesWithCallbacks = newFlowchart.nodes.map(node => ({
+        ...node,
+        data: {
+          ...node.data,
+          onUpdate: onNodeUpdate,
+        }
+      }))
+      
+      setNodes(nodesWithCallbacks)
+      setEdges(newFlowchart.edges)
+      setFlowchartMetadata({
+        title: newFlowchart.title,
+        description: newFlowchart.description || "",
+        createdAt: newFlowchart.createdAt,
+        updatedAt: newFlowchart.updatedAt,
+      })
+      setCurrentFlowchartId(undefined) // New flowchart doesn't have an ID yet
+      setSaveStatus('unsaved')
+      setSaveError(null)
+      
+      // Reset node ID counter
+      const maxId = Math.max(
+        ...newFlowchart.nodes
+          .map(node => {
+            const match = node.id.match(/-(\d+)$/)
+            return match ? parseInt(match[1], 10) : 0
+          })
+          .filter(id => !isNaN(id))
+      )
+      nodeId.current = maxId + 1
+      
+    } catch (error) {
+      console.error('Failed to create new flowchart:', error)
+      setSaveError('Failed to create new flowchart')
+      setSaveStatus('error')
+    }
+  }, [setNodes, setEdges, onNodeUpdate]);
 
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
@@ -255,8 +375,8 @@ function FlowchartContent() {
         selectAll()
       } else if (event.key === "Escape") {
         deselectAll()
-      } else if (event.key === "=" && (event.ctrlKey || event.metaKey)) {
-        // Zoom in with Ctrl/Cmd + =
+      } else if ((event.key === "=" || event.key === "+") && (event.ctrlKey || event.metaKey)) {
+        // Zoom in with Ctrl/Cmd + = or +
         event.preventDefault()
         handleZoomIn()
       } else if (event.key === "-" && (event.ctrlKey || event.metaKey)) {
@@ -275,9 +395,45 @@ function FlowchartContent() {
         // Center view with Ctrl/Cmd + Shift + C
         event.preventDefault()
         handleCenterView()
+      } else if (event.key === "s" && (event.ctrlKey || event.metaKey)) {
+        // Save with Ctrl/Cmd + S
+        event.preventDefault()
+        performAutoSave()
+      } else if (event.key === "n" && (event.ctrlKey || event.metaKey)) {
+        // New flowchart with Ctrl/Cmd + N
+        event.preventDefault()
+        createNewFlowchartHandler('empty')
+      } else if (event.key === "e" && (event.ctrlKey || event.metaKey)) {
+        // Export with Ctrl/Cmd + E
+        event.preventDefault()
+        // This will be handled by the sidebar
+      } else if (event.key === "F1" || event.key === "?") {
+        // Show keyboard shortcuts help
+        event.preventDefault()
+        setShowKeyboardShortcuts(true)
+      } else if (event.key === "ArrowUp" && (event.ctrlKey || event.metaKey) && event.shiftKey) {
+        // Pan up with Ctrl/Cmd + Shift + Arrow Up
+        event.preventDefault()
+        const viewport = getViewport()
+        setViewport({ ...viewport, y: viewport.y + 50 }, { duration: 200 })
+      } else if (event.key === "ArrowDown" && (event.ctrlKey || event.metaKey) && event.shiftKey) {
+        // Pan down with Ctrl/Cmd + Shift + Arrow Down
+        event.preventDefault()
+        const viewport = getViewport()
+        setViewport({ ...viewport, y: viewport.y - 50 }, { duration: 200 })
+      } else if (event.key === "ArrowLeft" && (event.ctrlKey || event.metaKey) && event.shiftKey) {
+        // Pan left with Ctrl/Cmd + Shift + Arrow Left
+        event.preventDefault()
+        const viewport = getViewport()
+        setViewport({ ...viewport, x: viewport.x + 50 }, { duration: 200 })
+      } else if (event.key === "ArrowRight" && (event.ctrlKey || event.metaKey) && event.shiftKey) {
+        // Pan right with Ctrl/Cmd + Shift + Arrow Right
+        event.preventDefault()
+        const viewport = getViewport()
+        setViewport({ ...viewport, x: viewport.x - 50 }, { duration: 200 })
       }
     },
-    [deleteSelected, selectAll, deselectAll, handleZoomIn, handleZoomOut, handleZoomReset, handleZoomToFit, handleCenterView],
+    [deleteSelected, selectAll, deselectAll, handleZoomIn, handleZoomOut, handleZoomReset, handleZoomToFit, handleCenterView, getViewport, setViewport, performAutoSave, createNewFlowchartHandler],
   )
 
   // Handle flowchart metadata updates
@@ -288,22 +444,6 @@ function FlowchartContent() {
       updatedAt: new Date(),
     }))
   }, [])
-
-  // Handle node updates from within node components
-  const onNodeUpdate = useCallback((id: string, updates: object) => {
-    setNodes((nodes) =>
-      nodes.map((node) =>
-        node.id === id
-          ? { ...node, data: { ...node.data, ...updates } }
-          : node
-      )
-    )
-    // Update flowchart timestamp when nodes are modified
-    setFlowchartMetadata((prev) => ({
-      ...prev,
-      updatedAt: new Date(),
-    }))
-  }, [setNodes])
 
   // Handle drag over for drop zone
   const onDragOver = useCallback((event: DragEvent) => {
@@ -377,32 +517,7 @@ function FlowchartContent() {
     [screenToFlowPosition, setNodes, onNodeUpdate]
   )
 
-  // Auto-save functionality
-  const performAutoSave = useCallback(async () => {
-    if (nodes.length === 0 && edges.length === 0) {
-      // Don't save empty flowcharts
-      return
-    }
-
-    try {
-      setSaveStatus('saving')
-      setSaveError(null)
-      
-      const savedData = await autoSaveFlowchartData(
-        nodes,
-        edges,
-        flowchartMetadata,
-        currentFlowchartId
-      )
-      
-      setCurrentFlowchartId(savedData.id)
-      setSaveStatus('saved')
-    } catch (error) {
-      console.error('Auto-save failed:', error)
-      setSaveStatus('error')
-      setSaveError(error instanceof FlowchartStorageError ? error.message : 'Failed to save flowchart')
-    }
-  }, [nodes, edges, flowchartMetadata, currentFlowchartId])
+  
 
   // Load existing flowchart data on mount
   useEffect(() => {
@@ -452,49 +567,6 @@ function FlowchartContent() {
     loadExistingData()
   }, [setNodes, setEdges, onNodeUpdate])
 
-  // Clear flowchart and create new one
-  const createNewFlowchartHandler = useCallback((template: 'empty' | 'basic' | 'decision' = 'empty') => {
-    try {
-      const newFlowchart = createNewFlowchart(template)
-      
-      // Update node data with onUpdate callback
-      const nodesWithCallbacks = newFlowchart.nodes.map(node => ({
-        ...node,
-        data: {
-          ...node.data,
-          onUpdate: onNodeUpdate,
-        }
-      }))
-      
-      setNodes(nodesWithCallbacks)
-      setEdges(newFlowchart.edges)
-      setFlowchartMetadata({
-        title: newFlowchart.title,
-        description: newFlowchart.description || "",
-        createdAt: newFlowchart.createdAt,
-        updatedAt: newFlowchart.updatedAt,
-      })
-      setCurrentFlowchartId(undefined) // New flowchart doesn't have an ID yet
-      setSaveStatus('unsaved')
-      setSaveError(null)
-      
-      // Reset node ID counter
-      const maxId = Math.max(
-        ...newFlowchart.nodes
-          .map(node => {
-            const match = node.id.match(/-(\d+)$/)
-            return match ? parseInt(match[1], 10) : 0
-          })
-          .filter(id => !isNaN(id))
-      )
-      nodeId.current = maxId + 1
-      
-    } catch (error) {
-      console.error('Failed to create new flowchart:', error)
-      setSaveError('Failed to create new flowchart')
-      setSaveStatus('error')
-    }
-  }, [setNodes, setEdges, onNodeUpdate])
 
   // Clear current flowchart
   const clearFlowchartHandler = useCallback(() => {
@@ -529,10 +601,26 @@ function FlowchartContent() {
 
   useEffect(() => {
     document.addEventListener("keydown", onKeyDown as unknown as EventListener)
+    
+    // Add enhanced wheel zoom support
+    const handleWheel = (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey) {
+        handleWheelZoom(event)
+      }
+    }
+    
+    const flowWrapper = reactFlowWrapper.current
+    if (flowWrapper) {
+      flowWrapper.addEventListener("wheel", handleWheel, { passive: false })
+    }
+    
     return () => {
       document.removeEventListener("keydown", onKeyDown as unknown as EventListener)
+      if (flowWrapper) {
+        flowWrapper.removeEventListener("wheel", handleWheel)
+      }
     }
-  }, [onKeyDown])
+  }, [onKeyDown, handleWheelZoom])
 
   return (
     <div className="flex h-full">
@@ -555,6 +643,7 @@ function FlowchartContent() {
         onZoomToFit={handleZoomToFit}
         onZoomReset={handleZoomReset}
         onCenterView={handleCenterView}
+        onShowKeyboardShortcuts={() => setShowKeyboardShortcuts(true)}
       />
 
       {/* Main Canvas */}
@@ -567,6 +656,8 @@ function FlowchartContent() {
         onDragOver={onDragOver}
         onDragEnter={onDragEnter}
         onDragLeave={onDragLeave}
+        role="application"
+        aria-label="Flowchart canvas - drag nodes from sidebar to create flowchart"
       >
         {/* Drop zone indicator */}
         {isDragOver && (
@@ -587,13 +678,13 @@ function FlowchartContent() {
           snapToGrid
           snapGrid={[15, 15]}
           defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-          minZoom={0.05}
-          maxZoom={4}
+          minZoom={0.1}
+          maxZoom={3}
           zoomOnScroll={true}
           zoomOnPinch={true}
           zoomOnDoubleClick={false}
           panOnScroll={false}
-          panOnScrollSpeed={0.5}
+          panOnScrollSpeed={0.8}
           panOnDrag={[1, 2]}
           selectNodesOnDrag={false}
           attributionPosition="bottom-left"
@@ -605,14 +696,26 @@ function FlowchartContent() {
           }}
           multiSelectionKeyCode="Control"
           selectionKeyCode="Shift"
-          translateExtent={[[-2000, -2000], [2000, 2000]]}
-          nodeExtent={[[-1500, -1500], [1500, 1500]]}
+          translateExtent={[[-3000, -3000], [3000, 3000]]}
+          nodeExtent={[[-2500, -2500], [2500, 2500]]}
+          zoomActivationKeyCode="Control"
+          preventScrolling={false}
+          elementsSelectable={true}
+          nodesConnectable={true}
+          nodesDraggable={true}
+          panOnScrollMode="free"
         >
           <Controls />
           <MiniMap position="top-right" />
           <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
         </ReactFlow>
       </div>
+
+      {/* Keyboard Shortcuts Dialog */}
+      <KeyboardShortcutsDialog
+        isOpen={showKeyboardShortcuts}
+        onClose={() => setShowKeyboardShortcuts(false)}
+      />
     </div>
   )
 }

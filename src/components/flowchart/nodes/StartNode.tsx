@@ -10,13 +10,18 @@ interface StartNodeData {
   onUpdate?: (id: string, updates: object) => void
 }
 
-export function StartNode({ data, selected }: NodeProps<StartNodeData>) {
+// Extend NodeProps to include id
+interface StartNodeProps extends NodeProps<StartNodeData> {
+  id: string
+}
+
+export function StartNode({ data, selected, id }: StartNodeProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [label, setLabel] = useState(data.label || (data.nodeType === 'start' ? 'Start' : 'End'))
 
   const handleLabelUpdate = () => {
     setIsEditing(false)
-    data.onUpdate?.(data.id, { label })
+    data.onUpdate?.(id, { label })
   }
 
   const isStart = data.nodeType === 'start'
@@ -32,6 +37,16 @@ export function StartNode({ data, selected }: NodeProps<StartNodeData>) {
       style={{
         backgroundColor: data.backgroundColor,
         color: data.textColor,
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`${isStart ? 'Start' : 'End'} node: ${label}. Double-click to edit label.`}
+      aria-describedby={`${id}-description`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          setIsEditing(true)
+        }
       }}
     >
       {/* Start nodes only have source handles, End nodes only have target handles */}
@@ -66,8 +81,9 @@ export function StartNode({ data, selected }: NodeProps<StartNodeData>) {
               setIsEditing(false)
             }
           }}
-          className="w-full bg-transparent border-none outline-none font-medium text-center"
+          className="w-full bg-transparent border-none outline-none font-medium text-center focus:ring-2 focus:ring-blue-500 focus:ring-inset"
           autoFocus
+          aria-label={`Edit ${isStart ? 'start' : 'end'} node label`}
         />
       ) : (
         <div 
@@ -77,6 +93,11 @@ export function StartNode({ data, selected }: NodeProps<StartNodeData>) {
           {label}
         </div>
       )}
+      
+      {/* Hidden description for screen readers */}
+      <div id={`${id}-description`} className="sr-only">
+        {isStart ? 'Start' : 'End'} node in flowchart. {isStart ? 'This is where the process begins.' : 'This is where the process ends.'}
+      </div>
     </div>
   )
 }

@@ -10,7 +10,12 @@ interface ProcessNodeData {
   onUpdate?: (id: string, updates: object) => void
 }
 
-export function ProcessNode({ data, selected }: NodeProps<ProcessNodeData>) {
+// Extend NodeProps to include id
+interface ProcessNodeProps extends NodeProps<ProcessNodeData> {
+  id: string
+}
+
+export function ProcessNode({ data, selected, id }: ProcessNodeProps) {
   const [isEditingLabel, setIsEditingLabel] = useState(false)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [label, setLabel] = useState(data.label || "Process")
@@ -18,12 +23,12 @@ export function ProcessNode({ data, selected }: NodeProps<ProcessNodeData>) {
 
   const handleLabelUpdate = () => {
     setIsEditingLabel(false)
-    data.onUpdate?.(data.id, { label })
+    data.onUpdate?.(id, { label })
   }
 
   const handleDescriptionUpdate = () => {
     setIsEditingDescription(false)
-    data.onUpdate?.(data.id, { description })
+    data.onUpdate?.(id, { description })
   }
 
   const backgroundColor = data.backgroundColor || 'bg-blue-100'
@@ -36,6 +41,16 @@ export function ProcessNode({ data, selected }: NodeProps<ProcessNodeData>) {
       style={{
         backgroundColor: data.backgroundColor,
         color: data.textColor,
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Process node: ${label}. ${description || 'No description'}. Double-click to edit.`}
+      aria-describedby={`${id}-description`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          setIsEditingLabel(true)
+        }
       }}
     >
       {/* Input handle */}
@@ -61,8 +76,9 @@ export function ProcessNode({ data, selected }: NodeProps<ProcessNodeData>) {
               setIsEditingLabel(false)
             }
           }}
-          className="w-full bg-transparent border-none outline-none font-medium mb-1"
+          className="w-full bg-transparent border-none outline-none font-medium mb-1 focus:ring-2 focus:ring-blue-500 focus:ring-inset"
           autoFocus
+          aria-label="Edit process node label"
         />
       ) : (
         <div 
@@ -89,10 +105,11 @@ export function ProcessNode({ data, selected }: NodeProps<ProcessNodeData>) {
               setIsEditingDescription(false)
             }
           }}
-          className="w-full bg-transparent border-none outline-none text-sm opacity-75 resize-none"
+          className="w-full bg-transparent border-none outline-none text-sm opacity-75 resize-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
           rows={2}
           placeholder="Add description..."
           autoFocus
+          aria-label="Edit process node description"
         />
       ) : (
         <div 
@@ -104,6 +121,11 @@ export function ProcessNode({ data, selected }: NodeProps<ProcessNodeData>) {
           )}
         </div>
       )}
+      
+      {/* Hidden description for screen readers */}
+      <div id={`${id}-description`} className="sr-only">
+        Process node in flowchart. This represents a step or action in the process. {description ? `Description: ${description}` : 'No description provided.'}
+      </div>
       
       {/* Output handle */}
       <Handle type="source" position={Position.Bottom} id="process-output" />

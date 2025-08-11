@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type DragEvent } from "react"
-import { Play, Settings, HelpCircle, Circle, Square, FileText, Save, CheckCircle, AlertCircle, Clock, Plus, Trash2, ChevronDown, ZoomIn, ZoomOut, Maximize, RotateCcw, Target } from "lucide-react"
+import { Play, Settings, HelpCircle, Circle, Square, FileText, Save, CheckCircle, AlertCircle, Clock, Plus, Trash2, ChevronDown, ZoomIn, ZoomOut, Maximize, RotateCcw, Target, Keyboard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { MermaidExporter } from "./MermaidExporter"
 import { type Node, type Edge } from "reactflow"
@@ -101,6 +101,7 @@ interface FlowchartSidebarProps {
   onZoomToFit?: () => void
   onZoomReset?: () => void
   onCenterView?: () => void
+  onShowKeyboardShortcuts?: () => void
 }
 
 export function FlowchartSidebar({ 
@@ -121,7 +122,8 @@ export function FlowchartSidebar({
   onZoomOut,
   onZoomToFit,
   onZoomReset,
-  onCenterView
+  onCenterView,
+  onShowKeyboardShortcuts
 }: FlowchartSidebarProps) {
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [showMermaidExporter, setShowMermaidExporter] = useState(false)
@@ -234,13 +236,29 @@ export function FlowchartSidebar({
   }, [showNewFlowchartMenu])
 
   return (
-    <div className="w-80 bg-white border-r border-gray-200 flex-shrink-0 flex flex-col">
+    <div className="w-80 bg-white border-r border-gray-200 flex-shrink-0 flex flex-col" role="complementary" aria-label="Flowchart editor sidebar">
       {/* Header */}
       <div className="p-4 border-b border-gray-100">
-        <h2 className="text-lg font-semibold text-gray-900">Flowchart Editor</h2>
-        <p className="text-sm text-gray-600 mt-1">
-          Drag nodes onto the canvas to build your flowchart
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Flowchart Editor</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Drag nodes onto the canvas to build your flowchart
+            </p>
+          </div>
+          {onShowKeyboardShortcuts && (
+            <Button
+              onClick={onShowKeyboardShortcuts}
+              variant="ghost"
+              size="sm"
+              className="p-2"
+              title="Show keyboard shortcuts (F1 or ?)"
+              aria-label="Show keyboard shortcuts help"
+            >
+              <Keyboard className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Save Status */}
@@ -254,13 +272,15 @@ export function FlowchartSidebar({
               size="sm"
               variant="outline"
               className="h-7 px-2 text-xs"
+              title="Save flowchart (Ctrl/Cmd + S)"
+              aria-label="Save flowchart manually"
             >
               <Save className="w-3 h-3 mr-1" />
               Save
             </Button>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" role="status" aria-live="polite">
           {getSaveStatusIcon()}
           <span className={`text-xs ${getSaveStatusColor()}`}>
             {getSaveStatusText()}
@@ -284,6 +304,9 @@ export function FlowchartSidebar({
               className="w-full flex items-center justify-between"
               variant="outline"
               size="sm"
+              aria-expanded={showNewFlowchartMenu}
+              aria-haspopup="menu"
+              title="Create new flowchart (Ctrl/Cmd + N)"
             >
               <div className="flex items-center gap-2">
                 <Plus className="w-4 h-4" />
@@ -293,22 +316,25 @@ export function FlowchartSidebar({
             </Button>
             
             {showNewFlowchartMenu && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10" role="menu">
                 <button
                   onClick={() => handleNewFlowchart('empty')}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 first:rounded-t-md"
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 first:rounded-t-md focus:bg-gray-50 focus:outline-none"
+                  role="menuitem"
                 >
                   Empty Flowchart
                 </button>
                 <button
                   onClick={() => handleNewFlowchart('basic')}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 border-t border-gray-100"
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 border-t border-gray-100 focus:bg-gray-50 focus:outline-none"
+                  role="menuitem"
                 >
                   Basic Process Flow
                 </button>
                 <button
                   onClick={() => handleNewFlowchart('decision')}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 border-t border-gray-100 last:rounded-b-md"
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 border-t border-gray-100 last:rounded-b-md focus:bg-gray-50 focus:outline-none"
+                  role="menuitem"
                 >
                   Decision Flow
                 </button>
@@ -325,6 +351,7 @@ export function FlowchartSidebar({
                   className="w-full flex items-center gap-2"
                   variant="outline"
                   size="sm"
+                  aria-label="Clear all nodes and connections from flowchart"
                 >
                   <Trash2 className="w-4 h-4" />
                   Clear Flowchart
@@ -365,28 +392,38 @@ export function FlowchartSidebar({
           <h3 className="text-sm font-medium text-gray-700 mb-3">Flowchart Details</h3>
           <div className="space-y-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
+              <label htmlFor="flowchart-title" className="block text-xs font-medium text-gray-600 mb-1">
                 Title
               </label>
               <input
+                id="flowchart-title"
                 type="text"
                 value={flowchartMetadata.title}
                 onChange={(e) => onUpdateMetadata({ title: e.target.value })}
                 className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter flowchart title"
+                aria-describedby="flowchart-title-help"
               />
+              <div id="flowchart-title-help" className="sr-only">
+                Enter a descriptive title for your flowchart
+              </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
+              <label htmlFor="flowchart-description" className="block text-xs font-medium text-gray-600 mb-1">
                 Description
               </label>
               <textarea
+                id="flowchart-description"
                 value={flowchartMetadata.description}
                 onChange={(e) => onUpdateMetadata({ description: e.target.value })}
                 className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none"
                 rows={2}
                 placeholder="Enter flowchart description"
+                aria-describedby="flowchart-description-help"
               />
+              <div id="flowchart-description-help" className="sr-only">
+                Enter an optional description explaining the purpose of your flowchart
+              </div>
             </div>
             <div className="text-xs text-gray-500 space-y-1">
               <div>Created: {flowchartMetadata.createdAt.toLocaleDateString()}</div>
@@ -455,7 +492,7 @@ export function FlowchartSidebar({
 
       {/* Selection Status */}
       {(selectedNodesCount > 0 || selectedEdgesCount > 0) && (
-        <div className="p-4 border-b border-gray-100 bg-blue-50">
+        <div className="p-4 border-b border-gray-100 bg-blue-50" role="status" aria-live="polite">
           <h3 className="text-sm font-medium text-blue-700 mb-2">Selection</h3>
           <div className="text-xs text-blue-600 space-y-1">
             {selectedNodesCount > 0 && (
@@ -472,7 +509,7 @@ export function FlowchartSidebar({
       {/* Node Palette */}
       <div className="flex-1 p-4">
         <h3 className="text-sm font-medium text-gray-700 mb-3">Node Palette</h3>
-        <div className="space-y-2">
+        <div className="space-y-2" role="group" aria-label="Flowchart node types">
           {nodePalette.map((item) => (
             <div
               key={item.type}
@@ -482,8 +519,17 @@ export function FlowchartSidebar({
               className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
                 draggedItem === item.type
                   ? "bg-blue-50 border-blue-300 opacity-50"
-                  : "bg-gray-50 border-gray-200 cursor-grab hover:bg-gray-100 hover:border-gray-300 active:cursor-grabbing"
+                  : "bg-gray-50 border-gray-200 cursor-grab hover:bg-gray-100 hover:border-gray-300 active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               }`}
+              tabIndex={0}
+              role="button"
+              aria-label={`Drag ${item.label} node to canvas - ${item.description}`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  // Could implement keyboard-based node creation here
+                }
+              }}
             >
               <div className="flex-shrink-0 text-gray-600">
                 {item.icon}
@@ -509,6 +555,8 @@ export function FlowchartSidebar({
           disabled={nodes.length === 0}
           className="w-full flex items-center gap-2"
           variant="outline"
+          title="Export flowchart to Mermaid.js format (Ctrl/Cmd + E)"
+          aria-label="Export flowchart to Mermaid.js format"
         >
           <FileText className="w-4 h-4" />
           Export to Mermaid.js

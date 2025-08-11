@@ -11,7 +11,12 @@ interface DecisionNodeData {
   onUpdate?: (id: string, updates: object) => void
 }
 
-export function DecisionNode({ data, selected }: NodeProps<DecisionNodeData>) {
+// Extend NodeProps to include id
+interface DecisionNodeProps extends NodeProps<DecisionNodeData> {
+  id: string
+}
+
+export function DecisionNode({ data, selected, id }: DecisionNodeProps) {
   const [isEditingLabel, setIsEditingLabel] = useState(false)
   const [isEditingYes, setIsEditingYes] = useState(false)
   const [isEditingNo, setIsEditingNo] = useState(false)
@@ -21,17 +26,17 @@ export function DecisionNode({ data, selected }: NodeProps<DecisionNodeData>) {
 
   const handleLabelUpdate = () => {
     setIsEditingLabel(false)
-    data.onUpdate?.(data.id, { label })
+    data.onUpdate?.(id, { label })
   }
 
   const handleYesLabelUpdate = () => {
     setIsEditingYes(false)
-    data.onUpdate?.(data.id, { yesLabel })
+    data.onUpdate?.(id, { yesLabel })
   }
 
   const handleNoLabelUpdate = () => {
     setIsEditingNo(false)
-    data.onUpdate?.(data.id, { noLabel })
+    data.onUpdate?.(id, { noLabel })
   }
 
   const backgroundColor = data.backgroundColor || 'bg-yellow-100'
@@ -39,7 +44,19 @@ export function DecisionNode({ data, selected }: NodeProps<DecisionNodeData>) {
   const borderColor = selected ? 'border-blue-500' : 'border-yellow-300'
 
   return (
-    <div className="relative">
+    <div 
+      className="relative"
+      role="button"
+      tabIndex={0}
+      aria-label={`Decision node: ${label}. Yes option: ${yesLabel}. No option: ${noLabel}. Double-click to edit.`}
+      aria-describedby={`${id}-description`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          setIsEditingLabel(true)
+        }
+      }}
+    >
       {/* Diamond shape using CSS transform */}
       <div
         className={`w-32 h-32 border-2 shadow-md transform rotate-45 ${backgroundColor} ${borderColor}`}
@@ -109,8 +126,9 @@ export function DecisionNode({ data, selected }: NodeProps<DecisionNodeData>) {
                 setIsEditingLabel(false)
               }
             }}
-            className="w-20 bg-transparent border-none outline-none font-medium text-center text-xs pointer-events-auto"
+            className="w-20 bg-transparent border-none outline-none font-medium text-center text-xs pointer-events-auto focus:ring-2 focus:ring-blue-500 focus:ring-inset"
             autoFocus
+            aria-label="Edit decision node label"
           />
         ) : (
           <div 
@@ -138,9 +156,10 @@ export function DecisionNode({ data, selected }: NodeProps<DecisionNodeData>) {
                 setIsEditingYes(false)
               }
             }}
-            className={`w-12 bg-transparent border-none outline-none text-xs text-center ${textColor}`}
+            className={`w-12 bg-transparent border-none outline-none text-xs text-center ${textColor} focus:ring-2 focus:ring-blue-500 focus:ring-inset`}
             style={{ color: data.textColor }}
             autoFocus
+            aria-label="Edit yes branch label"
           />
         ) : (
           <div 
@@ -169,9 +188,10 @@ export function DecisionNode({ data, selected }: NodeProps<DecisionNodeData>) {
                 setIsEditingNo(false)
               }
             }}
-            className={`w-12 bg-transparent border-none outline-none text-xs text-center ${textColor}`}
+            className={`w-12 bg-transparent border-none outline-none text-xs text-center ${textColor} focus:ring-2 focus:ring-blue-500 focus:ring-inset`}
             style={{ color: data.textColor }}
             autoFocus
+            aria-label="Edit no branch label"
           />
         ) : (
           <div 
@@ -182,6 +202,11 @@ export function DecisionNode({ data, selected }: NodeProps<DecisionNodeData>) {
             {noLabel}
           </div>
         )}
+      </div>
+      
+      {/* Hidden description for screen readers */}
+      <div id={`${id}-description`} className="sr-only">
+        Decision node in flowchart. This represents a decision point with two possible outcomes: {yesLabel} (right path) and {noLabel} (bottom path).
       </div>
     </div>
   )
