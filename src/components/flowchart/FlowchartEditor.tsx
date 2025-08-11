@@ -15,6 +15,7 @@ import ReactFlow, {
   ReactFlowProvider,
   useReactFlow,
   MarkerType,
+  type Viewport,
 } from "reactflow"
 import "reactflow/dist/style.css"
 
@@ -89,7 +90,7 @@ function FlowchartContent() {
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | 'unsaved'>('saved')
   const [saveError, setSaveError] = useState<string | null>(null)
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
-  const { screenToFlowPosition } = useReactFlow()
+  const { screenToFlowPosition, fitView, zoomIn, zoomOut, zoomTo, getZoom, getViewport, setViewport } = useReactFlow()
   const nodeId = useRef(0)
 
   // Validate connections for flowchart logic
@@ -187,6 +188,57 @@ function FlowchartContent() {
     setEdges((edges) => edges.map((edge) => ({ ...edge, selected: false })))
   }, [setNodes, setEdges])
 
+  // Zoom and pan control functions
+  const handleZoomIn = useCallback(() => {
+    zoomIn({ duration: 300 })
+  }, [zoomIn])
+
+  const handleZoomOut = useCallback(() => {
+    zoomOut({ duration: 300 })
+  }, [zoomOut])
+
+  const handleZoomToFit = useCallback(() => {
+    fitView({ 
+      padding: 0.1, 
+      duration: 500,
+      minZoom: 0.1,
+      maxZoom: 1.5
+    })
+  }, [fitView])
+
+  const handleZoomReset = useCallback(() => {
+    zoomTo(1, { duration: 300 })
+  }, [zoomTo])
+
+  const handleCenterView = useCallback(() => {
+    if (nodes.length === 0) {
+      // If no nodes, center at origin
+      setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 300 })
+      return
+    }
+
+    // Calculate the center of all nodes
+    const nodePositions = nodes.map(node => ({
+      x: node.position.x,
+      y: node.position.y
+    }))
+
+    const centerX = nodePositions.reduce((sum, pos) => sum + pos.x, 0) / nodePositions.length
+    const centerY = nodePositions.reduce((sum, pos) => sum + pos.y, 0) / nodePositions.length
+
+    // Get current viewport dimensions (approximate)
+    const viewportWidth = reactFlowWrapper.current?.clientWidth || 800
+    const viewportHeight = reactFlowWrapper.current?.clientHeight || 600
+
+    // Center the view on the calculated center
+    const currentZoom = getZoom()
+    setViewport({
+      x: viewportWidth / 2 - centerX * currentZoom,
+      y: viewportHeight / 2 - centerY * currentZoom,
+      zoom: currentZoom
+    }, { duration: 300 })
+  }, [nodes, setViewport, getZoom])
+
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
       // Prevent actions when an input field is focused
@@ -203,9 +255,29 @@ function FlowchartContent() {
         selectAll()
       } else if (event.key === "Escape") {
         deselectAll()
+      } else if (event.key === "=" && (event.ctrlKey || event.metaKey)) {
+        // Zoom in with Ctrl/Cmd + =
+        event.preventDefault()
+        handleZoomIn()
+      } else if (event.key === "-" && (event.ctrlKey || event.metaKey)) {
+        // Zoom out with Ctrl/Cmd + -
+        event.preventDefault()
+        handleZoomOut()
+      } else if (event.key === "0" && (event.ctrlKey || event.metaKey)) {
+        // Reset zoom with Ctrl/Cmd + 0
+        event.preventDefault()
+        handleZoomReset()
+      } else if (event.key === "f" && (event.ctrlKey || event.metaKey)) {
+        // Fit view with Ctrl/Cmd + F
+        event.preventDefault()
+        handleZoomToFit()
+      } else if (event.key === "c" && (event.ctrlKey || event.metaKey) && event.shiftKey) {
+        // Center view with Ctrl/Cmd + Shift + C
+        event.preventDefault()
+        handleCenterView()
       }
     },
-    [deleteSelected, selectAll, deselectAll],
+    [deleteSelected, selectAll, deselectAll, handleZoomIn, handleZoomOut, handleZoomReset, handleZoomToFit, handleCenterView],
   )
 
   // Handle flowchart metadata updates
@@ -478,6 +550,11 @@ function FlowchartContent() {
         onManualSave={performAutoSave}
         onNewFlowchart={createNewFlowchartHandler}
         onClearFlowchart={clearFlowchartHandler}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onZoomToFit={handleZoomToFit}
+        onZoomReset={handleZoomReset}
+        onCenterView={handleCenterView}
       />
 
       {/* Main Canvas */}
@@ -510,8 +587,15 @@ function FlowchartContent() {
           snapToGrid
           snapGrid={[15, 15]}
           defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-          minZoom={0.1}
-          maxZoom={2}
+          minZoom={0.05}
+          maxZoom={4}
+          zoomOnScroll={true}
+          zoomOnPinch={true}
+          zoomOnDoubleClick={false}
+          panOnScroll={false}
+          panOnScrollSpeed={0.5}
+          panOnDrag={[1, 2]}
+          selectNodesOnDrag={false}
           attributionPosition="bottom-left"
           onKeyDown={onKeyDown}
           connectionLineStyle={{
@@ -521,8 +605,8 @@ function FlowchartContent() {
           }}
           multiSelectionKeyCode="Control"
           selectionKeyCode="Shift"
-          panOnDrag={[1, 2]}
-          selectNodesOnDrag={false}
+          translateExtent={[[-2000, -2000], [2000, 2000]]}
+          nodeExtent={[[-1500, -1500], [1500, 1500]]}
         >
           <Controls />
           <MiniMap position="top-right" />

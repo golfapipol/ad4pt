@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type DragEvent } from "react"
-import { Play, Settings, HelpCircle, Circle, Square, FileText, Save, CheckCircle, AlertCircle, Clock, Plus, Trash2, ChevronDown } from "lucide-react"
+import { Play, Settings, HelpCircle, Circle, Square, FileText, Save, CheckCircle, AlertCircle, Clock, Plus, Trash2, ChevronDown, ZoomIn, ZoomOut, Maximize, RotateCcw, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { MermaidExporter } from "./MermaidExporter"
 import { type Node, type Edge } from "reactflow"
@@ -96,6 +96,11 @@ interface FlowchartSidebarProps {
   onManualSave?: () => Promise<void>
   onNewFlowchart?: (template?: 'empty' | 'basic' | 'decision') => void
   onClearFlowchart?: () => void
+  onZoomIn?: () => void
+  onZoomOut?: () => void
+  onZoomToFit?: () => void
+  onZoomReset?: () => void
+  onCenterView?: () => void
 }
 
 export function FlowchartSidebar({ 
@@ -111,7 +116,12 @@ export function FlowchartSidebar({
   currentFlowchartId,
   onManualSave,
   onNewFlowchart,
-  onClearFlowchart
+  onClearFlowchart,
+  onZoomIn,
+  onZoomOut,
+  onZoomToFit,
+  onZoomReset,
+  onCenterView
 }: FlowchartSidebarProps) {
   const [draggedItem, setDraggedItem] = useState<string | null>(null)
   const [showMermaidExporter, setShowMermaidExporter] = useState(false)
@@ -386,6 +396,63 @@ export function FlowchartSidebar({
         </div>
       )}
 
+      {/* Zoom and Pan Controls */}
+      <div className="p-4 border-b border-gray-100">
+        <h3 className="text-sm font-medium text-gray-700 mb-3">View Controls</h3>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            onClick={onZoomIn}
+            size="sm"
+            variant="outline"
+            className="flex items-center gap-1 text-xs"
+            title="Zoom In (Ctrl/Cmd + =)"
+          >
+            <ZoomIn className="w-3 h-3" />
+            Zoom In
+          </Button>
+          <Button
+            onClick={onZoomOut}
+            size="sm"
+            variant="outline"
+            className="flex items-center gap-1 text-xs"
+            title="Zoom Out (Ctrl/Cmd + -)"
+          >
+            <ZoomOut className="w-3 h-3" />
+            Zoom Out
+          </Button>
+          <Button
+            onClick={onZoomToFit}
+            size="sm"
+            variant="outline"
+            className="flex items-center gap-1 text-xs"
+            title="Fit to View (Ctrl/Cmd + F)"
+          >
+            <Maximize className="w-3 h-3" />
+            Fit View
+          </Button>
+          <Button
+            onClick={onZoomReset}
+            size="sm"
+            variant="outline"
+            className="flex items-center gap-1 text-xs"
+            title="Reset Zoom (Ctrl/Cmd + 0)"
+          >
+            <RotateCcw className="w-3 h-3" />
+            Reset
+          </Button>
+        </div>
+        <Button
+          onClick={onCenterView}
+          size="sm"
+          variant="outline"
+          className="w-full mt-2 flex items-center gap-1 text-xs"
+          title="Center View (Ctrl/Cmd + Shift + C)"
+        >
+          <Target className="w-3 h-3" />
+          Center View
+        </Button>
+      </div>
+
       {/* Selection Status */}
       {(selectedNodesCount > 0 || selectedEdgesCount > 0) && (
         <div className="p-4 border-b border-gray-100 bg-blue-50">
@@ -470,6 +537,18 @@ export function FlowchartSidebar({
           <li>• <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">Shift+Drag</kbd> Box select</li>
           <li>• <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">Esc</kbd> Deselect all</li>
           <li>• <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">Del</kbd> Delete selected</li>
+        </ul>
+        
+        <h4 className="text-sm font-medium text-gray-700 mb-2 mt-3">Zoom & Pan</h4>
+        <ul className="text-xs text-gray-600 space-y-1">
+          <li>• <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">Ctrl+=</kbd> Zoom in</li>
+          <li>• <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">Ctrl+-</kbd> Zoom out</li>
+          <li>• <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">Ctrl+0</kbd> Reset zoom</li>
+          <li>• <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">Ctrl+F</kbd> Fit to view</li>
+          <li>• <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">Ctrl+Shift+C</kbd> Center view</li>
+          <li>• <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">Ctrl+Wheel</kbd> Smooth zoom</li>
+          <li>• <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">Click+Drag</kbd> Pan canvas</li>
+          <li>• <kbd className="px-1 py-0.5 bg-gray-200 rounded text-xs">Ctrl+Shift+↑↓←→</kbd> Pan with keys</li>
         </ul>
       </div>
 
